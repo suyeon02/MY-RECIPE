@@ -5,12 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-<<<<<<< HEAD
     // GitHub Pages serves project sites from a repository subpath.
     // Relative asset URLs keep the built app working from that location.
     base: './',
-=======
->>>>>>> 5480881bf57843aa50c964fcd004932d0f58cc96
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
