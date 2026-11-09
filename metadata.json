@@ -1,0 +1,6 @@
+{
+  "name": "MY RECIPE - SNS & 유튜브 요약 레시피 정리기",
+  "description": "SNS 및 유튜브 링크를 입력하면 AI가 영상을 분석하여 요리 재료, 양념, 조리 순서(타임스탬프), 꿀팁까지 깔끔하게 자동 요약 및 정리해주는 스마트 요리 노트",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
