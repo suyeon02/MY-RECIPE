@@ -1,5 +1,8 @@
 {
+<<<<<<< HEAD
   "homepage": "https://suyeon02.github.io/MY-RECIPE/",
+=======
+>>>>>>> 5480881bf57843aa50c964fcd004932d0f58cc96
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
@@ -10,9 +13,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
+<<<<<<< HEAD
     "lint": "tsc --noEmit",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
+=======
+    "lint": "tsc --noEmit"
+>>>>>>> 5480881bf57843aa50c964fcd004932d0f58cc96
   },
   "dependencies": {
     "@google/genai": "^3.0.0",
@@ -27,14 +34,25 @@
     "vite": "^8.3.0"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@types/express": "^4.17.21",
+=======
+>>>>>>> 5480881bf57843aa50c964fcd004932d0f58cc96
     "@types/node": "^22.14.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
+<<<<<<< HEAD
     "gh-pages": "^6.3.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2"
+=======
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^7.0.2",
+    "@types/express": "^4.17.21"
+>>>>>>> 5480881bf57843aa50c964fcd004932d0f58cc96
   }
 }
