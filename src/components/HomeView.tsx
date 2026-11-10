@@ -17,7 +17,7 @@ const CATEGORIES: { name: RecipeCategory; emoji: string }[] = [
   { name: '국·찌개', emoji: '🍲' },
   { name: '메인 요리', emoji: '🍖' },
   { name: '면·분식', emoji: '🍜' },
-  { name: '밥·죽', emoji: '🍚' },
+  { name: '밥·죽', emoji: '🍙' },
   { name: '간식·디저트', emoji: '🍰' },
   { name: '기타', emoji: '🍽️' },
 ];
@@ -141,7 +141,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div>
         <div className="flex items-center justify-between mb-3 px-1">
           <h3 className="font-bold text-stone-900 text-sm flex items-center gap-1">
-            <span>카테고리별 요리</span>
+            <span>카테고리</span>
           </h3>
         </div>
         <div className="grid grid-cols-4 gap-2">
@@ -149,12 +149,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <button
               key={cat.name}
               onClick={() => onFilterByCategory(cat.name)}
-              className="flex flex-col items-center justify-center py-2.5 px-1 bg-white rounded-2xl border border-amber-100 shadow-xs hover:shadow-md hover:border-orange-300 transition-all active:scale-95 group"
+              className="ct"
             >
-              <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">
+              <span className="cat-icon">
                 {cat.emoji}
               </span>
-              <span className="text-[11px] font-bold text-stone-700 whitespace-nowrap text-center">
+              <span className="cat-label">
                 {cat.name}
               </span>
             </button>
@@ -255,3 +255,4 @@ export const HomeView: React.FC<HomeViewProps> = ({
     </div>
   );
 };
+

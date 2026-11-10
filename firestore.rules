@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public shared recipe collection: anyone can read, add, edit, or delete recipes.
+    match /publicRecipes/{recipeId} {
+      allow read, write: if true;
+    }
+  }
+}
