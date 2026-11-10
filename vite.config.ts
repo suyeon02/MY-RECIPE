@@ -7,7 +7,7 @@ export default defineConfig(() => {
   return {
     // GitHub Pages serves project sites from a repository subpath.
     // Relative asset URLs keep the built app working from that location.
-    base: '/MY-RECIPE/',
+   base: '/', // GitHub Pages용 경로('/MY-RECIPE/') 대신 '/'로 설정
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
