@@ -69,18 +69,32 @@ const LOCAL_STORAGE_KEY = 'my_recipes_proto';
 const L = (s: string) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
 
 const splitIngredientLine = (line: string) => {
-  const match = line.match(/^(.*\S)\s+((?:약\s*)?[\d½¼¾][\d./½¼¾~\-]*\s*\S*)$/);
-  return match ? { name: match[1], amount: match[2] } : { name: line, amount: '' };
+  const cleanLine = line.replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
+  const match = cleanLine.match(/^(.*\S)\s+((?:약\s*)?[\d½¼¾][\d./½¼¾~\-]*\s*\S*)$/);
+  if (match) {
+    let name = match[1];
+    let amount = match[2].trim();
+    if (/^(약\s*)?[\d½¼¾./~-]+$/.test(amount)) {
+      amount = `${amount}큰술`;
+    }
+    return { name, amount };
+  }
+  const simpleMatch = cleanLine.match(/^(.*\S)\s+([\d.]+)$/);
+  if (simpleMatch) {
+    return { name: simpleMatch[1], amount: `${simpleMatch[2]}큰술` };
+  }
+  return { name: cleanLine, amount: '' };
 };
 
 const scaleIngredientAmount = (amount: string, ratio: number) => {
   if (!amount || ratio === 1) return amount;
-  return amount.replace(/(약\s*)?(\d+(?:\.\d+)?|[½¼¾])(?:\/(\d+))?/, (match, approx, value, denominator) => {
+  return amount.replace(/(약\s*)?(\d+(?:\.\d+)?|[½¼¾])(?:\/(\d+))?(\s*\S*)?/, (match, approx, value, denominator, unit) => {
     const fractionValues: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75 };
     const numericValue = fractionValues[value] ?? Number(value);
     const scaled = (numericValue / (denominator ? Number(denominator) : 1)) * ratio;
     const rounded = Number(scaled.toFixed(2));
-    return `${approx || ''}${rounded}`;
+    const resolvedUnit = unit ? unit.trim() : '';
+    return `${approx || ''}${rounded}${resolvedUnit ? ' ' + resolvedUnit : ''}`;
   });
 };
 
@@ -125,6 +139,41 @@ const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+
+const EditIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+
+// 갤러리 아이콘 (회색)
+const GalleryIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+// 카메라 아이콘 (회색)
+const CameraIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+    <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const YouTubeicon = () => (
+  <svg width="50" height="50" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#d10808">
+    <title>YouTube icon</title>
+    <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
+  </svg>
+);
 
 const extractYtId = (value: string) => {
   const input = String(value || '').trim();
@@ -711,10 +760,12 @@ export default function App() {
                 />
               )}
               <div className="row">
-                <label className="bt o" htmlFor="ec">
+                <label className="bt o" htmlFor="ec" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <CameraIcon />
                    사진 찍기
                 </label>
-                <label className="bt o" htmlFor="eg">
+                <label className="bt o" htmlFor="eg"style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <GalleryIcon />
                    갤러리 선택
                 </label>
               </div>
@@ -848,57 +899,21 @@ export default function App() {
 
               {/* Action buttons on hero */}
               <span className="acts">
-                <button
-                  type="button"
-                  className="ic"
-                  title="레시피 복사"
-                  aria-label="레시피 복사"
-                  onClick={async () => {
-                    const factor = servings / (currentViewingRecipe.serv || 2);
-                    const formatIngredients = (value: string) => L(value).map((line) => {
-                      const item = splitIngredientLine(line);
-                      const amount = scaleIngredientAmount(item.amount, factor);
-                      return amount ? `${item.name} ${amount}` : item.name;
-                    });
-                    const copyText = [
-                      currentViewingRecipe.name,
-                      currentViewingRecipe.cat,
-                      `인분: ${servings}인분`,
-                      '',
-                      '[재료]',
-                      ...formatIngredients(currentViewingRecipe.ing),
-                      '',
-                      '[양념]',
-                      ...formatIngredients(currentViewingRecipe.sau),
-                      '',
-                      '[조리 순서]',
-                      ...L(currentViewingRecipe.steps).map((step, index) => `${index + 1}. ${step}`),
-                      ...(currentViewingRecipe.tip ? ['', '[나만의 팁]', currentViewingRecipe.tip] : []),
-                    ].join('\n');
-                    try {
-                      await navigator.clipboard.writeText(copyText);
-                      showToast('레시피를 복사했어요.');
-                    } catch {
-                      showToast('레시피 복사에 실패했어요.');
-                    }
-                  }}
-                >
-                  <CopyIcon />
-                </button>
-                <button
-                  className="ic"
-                  onClick={() => setEditingRecipe({ ...currentViewingRecipe })}
-                  title="레시피 수정"
-                >
-                  ✏️
-                </button>
-                <button
-                  className={`ic ${deleteConfirmId === currentViewingRecipe.id ? 'rd' : ''}`}
-                  onClick={() => handleDelete(currentViewingRecipe.id)}
-                  title="레시피 삭제"
-                >
-                  {deleteConfirmId === currentViewingRecipe.id ? '삭제 확인' : '🗑️'}
-                </button>
+               
+               <button
+  className="ic"
+  onClick={() => setEditingRecipe({ ...currentViewingRecipe })}
+  title="레시피 수정"
+>
+  <EditIcon />
+</button>
+               <button
+  className={`ic ${deleteConfirmId === currentViewingRecipe.id ? 'rd' : ''}`}
+  onClick={() => handleDelete(currentViewingRecipe.id)}
+  title="레시피 삭제"
+>
+  {deleteConfirmId === currentViewingRecipe.id ? '삭제 확인' : <TrashIcon />}
+</button>
               </span>
             </div>
 
@@ -1066,7 +1081,7 @@ export default function App() {
             {/* Big SNS Import CTA Button */}
             <button
               className="bt"
-              style={{ margin: '14px 0px 36px 0px' }}
+              style={{ margin: '14px 0px 32px 0px' }}
               onClick={() => {
                 setTab('imp');
                 setImp('sns');
@@ -1078,10 +1093,11 @@ export default function App() {
             {/* Categories */}
             <h3>카테고리</h3>
             <div className="cats">
-              <button
+            <button
                 className="ct"
                 onClick={() => {
                   setSelectedCat('');
+                  setSearchQuery(''); // 검색어 초기화
                   setTab('my');
                 }}
               >
@@ -1253,7 +1269,8 @@ export default function App() {
                 <h2>레시피 추가</h2>
                 <div className="recipe-choice-list">
                   <div className="cd mc recipe-choice" onClick={() => setImp('sns')}>
-                    <span className="mi">🔗</span>
+                    <span className="mi" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <YouTubeicon /></span>
                     <div className="recipe-choice-copy">
                       <b>SNS 링크로 가져오기</b>
                       <div className="s">유튜브 · 쇼츠 링크를 넣으면 AI가 레시피를 요약해줘요.</div>
@@ -1265,7 +1282,7 @@ export default function App() {
                     <span className="mi">📷</span>
                     <div className="recipe-choice-copy">
                       <b>사진으로 등록</b>
-                      <div className="s">사진이나 손글씨 노트를 업로드하면, AI가 레시피를 완성해 줘요</div>
+                      <div className="s">사진이나 손글씨 노트를 업로드하면, AI가 레시피를 <br />완성해 줘요</div>
                     </div>
                    
                   </div>
@@ -1274,7 +1291,7 @@ export default function App() {
                     <span className="mi">✏️</span>
                     <div className="recipe-choice-copy">
                       <b>직접 작성</b>
-                      <div className="s">대충 적어도, 순서 없이 적어도 AI가 요리 이름, 재료, 조리 순서에 맞춰 깔끔하게 정리해줘요.</div>
+                      <div className="s">대충 적어도 AI가 요리 이름, 재료, 조리 순서에 맞춰 <br /> 깔끔하게 정리해줘요.</div>
                     </div>
                    
                   </div>
@@ -1370,11 +1387,13 @@ export default function App() {
 
                 <label className="fl">대표 사진 (선택)</label>
                 <div className="row">
-                  <label className="bt o" htmlFor="my_fc">
-                    📷 사진 찍기
+                  <label className="bt o" htmlFor="my_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <CameraIcon />
+                     사진 찍기
                   </label>
-                  <label className="bt o" htmlFor="my_fg">
-                    🖼️ 갤러리 선택
+                  <label className="bt o" htmlFor="my_fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <GalleryIcon />
+                    갤러리 선택
                   </label>
                 </div>
                 <input id="my_fc" type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
@@ -1403,8 +1422,10 @@ export default function App() {
               <div>
                 <h2>사진으로 등록</h2>
                 <div className="row">
-                  <label className="bt o" htmlFor="p_fc"> 사진 찍기</label>
-                  <label className="bt o" htmlFor="p_fg"> 갤러리 선택</label>
+                  <label className="bt o" htmlFor="p_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <CameraIcon /> 사진 찍기</label>
+                  <label className="bt o" htmlFor="p_fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+    <GalleryIcon /> 갤러리 선택</label>
                 </div>
                 <input id="p_fc" type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                 <input id="p_fg" type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
@@ -1528,11 +1549,12 @@ export default function App() {
               className={tab === k ? 'on' : ''}
               aria-label={title}
               title={title}
-              onClick={() => {
-                setViewRecipeId(null);
-                setTab(k as any);
-                setImp('');
-              }}
+             onClick={() => {
+              setViewRecipeId(null);
+              setTab(k as any);
+              setImp('');
+              setSearchQuery(''); // 다른 탭 클릭 시 검색어 초기화
+            }}
             >
               <img className="nav-icon" src={icon} alt="" aria-hidden="true" />
               {title}

@@ -53,7 +53,7 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--tx);
-  font: 17px/1.5 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font: 17px/1.5 "NanumBarunGothic", system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -90,13 +90,13 @@ main {
 }
 
 h2 {
-  font-size: 24px;
+  font-size: 30px;
   font-weight: 800;
   margin: 18px 0 30px;
 }
 
 h3 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   margin: 18px 0 8px;
 }
@@ -126,8 +126,6 @@ h3 {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  /*background: var(--cd);
-  box-shadow: var(--sh);*/
   border: 0;
   font-size: 20px;
   display: flex;
@@ -157,7 +155,9 @@ h3 {
 .s {
   color: var(--sub);
   font-size: 14px;
+  font-weight: 100;
 }
+
 
 input,
 textarea,
@@ -218,7 +218,7 @@ textarea {
   padding: 14px;
   min-height: 58px;
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
@@ -244,7 +244,6 @@ textarea {
   background: var(--cd);
   border: 0;
   border-radius: 22px;
-  box-shadow: var(--sh);
   padding: 14px 18px;
   margin: 10px 0;
 }
@@ -265,6 +264,7 @@ textarea {
   font: inherit;
   font-size: 15px;
   background: var(--cd);
+   border: 1px solid var(--bd);
   color: var(--tx);
   text-decoration: none;
   cursor: pointer;
@@ -273,7 +273,7 @@ textarea {
 .ch.on {
   background: var(--or);
   color: #fff;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .recipe-editor-form > .fl {
@@ -289,9 +289,9 @@ textarea {
 
 .fl {
   display: block;
-  font-weight: 700;
-  margin: 22px 0 12px;
-  font-size: 16px;
+  font-weight: 500;
+  margin: 15px 0 12px;
+  font-size: 17px;
 }
 
 .li {
@@ -332,7 +332,7 @@ nav button {
   border: 0;
   background: none;
   padding: 8px 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--sub);
   cursor: pointer;
   display: flex;
@@ -352,8 +352,9 @@ nav .nav-icon {
   width: 27px;
   height: 27px;
   object-fit: contain;
-  margin-bottom: 10px;
-  opacity: 0.76;
+  margin-bottom: 7px;
+  /* 원본 이미지를 회색(#737373)으로 변환하는 CSS 필터 */
+  filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%) hue-rotate(203deg) brightness(94%) contrast(88%);
 }
 
 .heart-icon {
@@ -381,7 +382,7 @@ nav .nav-icon {
 }
 
 .hd {
-  font-size: 30px;
+  font-size: 32px;
   line-height: 1.3;
   font-weight: 800;
   margin: 5px 0 30px;
@@ -421,9 +422,9 @@ nav .nav-icon {
   width: 100%;
   height: 58px;
   padding: 0 22px 0 62px;
-  border: 1px solid #e7e1d7;
+  border: 1px solid var(--or);
   border-radius: 999px;
-  background: #efede8;
+  background: #fbfbfa;
   color: var(--tx);
   font-size: 16px;
   font-weight: 400;
@@ -483,7 +484,7 @@ nav .nav-icon {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin: 26px 0 18px;
+  margin: 10px 0 14px;
 }
 
 .recent-heading h3 {
@@ -506,7 +507,7 @@ nav .nav-icon {
 
 .home-screen .pc .nm {
   min-height: 80px;
-  padding: 10px 12px 16px;
+  padding: 14px 12px 16px;
 }
 
 .home-screen .pc .nm > div:first-child {
@@ -518,7 +519,7 @@ nav .nav-icon {
 }
 
 .home-screen .pc .nm .s {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--sub);
   font-size: 13px;
   font-weight: 400;
@@ -637,19 +638,19 @@ nav .nav-icon {
 
 .recipe-note-list .lc .ph {
   align-self: stretch;
-  width: 116px;
+  width: 130px;
   min-height: 108px;
   height: auto;
   border-radius: 0;
 }
 
 .recipe-note-list .lc .nm {
-  padding: 12px 14px;
+  padding: 5px 22px;
 }
 
 .recipe-note-list .lc .nm > div:first-child {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -658,7 +659,7 @@ nav .nav-icon {
 
 .recipe-note-list .lc .nm .s {
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.8;
   color: var(--sub);
 }
 
@@ -675,6 +676,31 @@ nav .nav-icon {
 .recipe-note-list .lc .hr:active {
   color: #fff;
 }
+
+/* 요리 노트 목록(.recipe-note-list) 안에 있는 하트(hr) 버튼 크기 키우기 */
+.recipe-note-list .lc .hr{
+  width: 48px;  /* 버튼 영역 너비 확장 */
+  height: 44px; /* 버튼 영역 높이 확장 */
+  font-size: 26px; /* 이모지 또는 내부 아이콘 크기 키우기 */
+}
+
+/* SVG 하트 아이콘을 사용하는 경우 크기 직접 지정 */
+.recipe-note-list .lc .hr .heart-icon {
+  width: 24px;  /* SVG 가로 크기 */
+  height: 24px; /* SVG 세로 크기 */
+}
+
+/* 요리 노트 상단 즐겨찾기 필터 하트 버튼 크기 키우기 */
+.circ {
+  width: 48px;  /* 버튼 박스 너비 */
+  height: 48px; /* 버튼 박스 높이 */
+}
+
+.circ .heart-icon {
+  width: 28px;  /* 하트 아이콘 가로 크기 */
+  height: 28px; /* 하트 아이콘 세로 크기 */
+}
+
 
 .ct {
   flex: none;
@@ -704,7 +730,7 @@ nav .nav-icon {
 .cats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  row-gap: 14px;
+  row-gap: 10px;
   column-gap: 10px;
   overflow: visible;
   padding: 8px 0 12px;
@@ -765,7 +791,7 @@ nav .nav-icon {
   box-shadow: none;
   text-align: center;
   font-size: inherit;
-  font-weight: 400;
+  font-weight: 300;
   line-height: inherit;
   white-space: nowrap;
 }
@@ -1069,9 +1095,9 @@ nav .nav-icon {
 .mc.recipe-choice {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
   min-height: 120px;
-  padding: 0px 28px 0px 20px;
+  padding: 0px 39px 0px 30px;
   margin: 16px 0;
   border: 1px solid var(--bd);
   border-radius: 20px;
@@ -1095,7 +1121,7 @@ nav .nav-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 50px;
   flex: none;
 }
 
@@ -1105,7 +1131,7 @@ nav .nav-icon {
 }
 
 .mc.recipe-choice b {
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .mc.recipe-choice .s {
@@ -1212,7 +1238,7 @@ nav .nav-icon {
   width: 100%;
   max-width: 560px;
   border-radius: 28px;
-  padding: 24px;
+  padding:  60px 60px 40px;
   box-shadow: 0 14px 40px rgba(45, 34, 22, 0.18);
   max-height: 85vh;
   display: flex;
@@ -1237,13 +1263,14 @@ nav .nav-icon {
 }
 
 .mdl-close {
-  width: 48px;
-  height: 48px;
+  width: 35px;
+  height: 35px;
   flex: none;
   border-radius: 50%;
   background: #f1ede5;
   border: 0;
-  font-size: 24px;
+  font-size: 20px;
+  font-weight: 800;
   cursor: pointer;
   color: #80766a;
   padding: 0;
@@ -1254,16 +1281,39 @@ nav .nav-icon {
 .mdl-h .download-icon { width: 32px; height: 32px; }
 .exp-subtitle { color: #80766a; font-size: 16px; line-height: 1.5; margin: 0 0 24px; }
 .exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0 0 22px; }
-.exp-selectall { border: 0; border-radius: 999px; background: #fff0e2; color: #ff7900; font-weight: 800; font-size: 15px; padding: 11px 18px; cursor: pointer; }
+.exp-selectall { border: 0; border-radius: 999px;  border: 1px solid #ff7900; color: #ff7900; font-weight: 500; font-size: 15px; padding: 11px 18px; cursor: pointer; }
 .exp-count { color: #80766a; font-size: 15px; }
-.exp-list { max-height: 260px; overflow-y: auto; margin: 0 0 20px; }
-.exp-item { display: flex; align-items: center; gap: 14px; min-height: 70px; padding: 12px 4px; border-bottom: 1px solid #ece4d8; cursor: pointer; }
+.exp-list { max-height: 260px; overflow-y: auto; margin: 0px 15px 30px; }
 .exp-item:last-child { border-bottom: 0; }
-.exp-check { appearance: none; width: 32px; height: 32px; flex: none; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: grid; place-items: center; cursor: pointer; }
+.exp-check { appearance: none; width: 28px; height: 28px; flex: none; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: grid; place-items: center; cursor: pointer; }
 .exp-check:checked { background: #ff7900; border-color: #ff7900; }
-.exp-check:checked::after { content: '✓'; font-size: 17px; line-height: 0; color: #fff; font-weight: 700; }
-.exp-name { font-size: 20px; font-weight: 800; color: #2b2620; }
-.exp-category { margin-left: auto; color: #80766a; font-size: 15px; font-weight: 500; white-space: nowrap; }
+.exp-check:checked::after { content: '✓'; font-size: 13px; line-height: 0; color: #fff; font-weight: 700; }
+
+.exp-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 70px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #ece4d8;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.exp-name {
+  flex: 1;                 /* 남은 공간을 이름이 모두 차지하되 */
+  min-width: 0;            /* flex 박스 밖으로 튀어나가지 않도록 강제 제한 */
+  overflow: hidden;        /* 넘치는 글자 숨김 */
+  text-overflow: ellipsis; /* 말줄임표(...) 처리 */
+  white-space: nowrap;     /* 줄바꿈 방지 */
+}
+
+.exp-category {
+  flex-shrink: 0;          /* 카테고리 글자가 찌그러지거나 밀려나지 않도록 고정 */
+  font-size: 14px;
+  color: var(--sub);
+  margin-left: 8px;        /* 이름과 카테고리 사이 간격 확보 */
+}
 .exp-actions { display: flex; gap: 12px; margin: 0; }
 .exp-action { flex: 1; min-height: 58px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
 .exp-copy { background: #f1ede5; color: #2b2620; }
@@ -1280,7 +1330,7 @@ nav .nav-icon {
 
 
 .home-screen > h3 {
-  margin: 25px 0 18px;
+  margin: 13px 0 14px;
 }
 
 /* Scoped recipe detail styling requested for the notebook detail content. */
