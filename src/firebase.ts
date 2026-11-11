@@ -3,6 +3,7 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { collection, deleteDoc, doc, getDocs, getFirestore, setDoc } from 'firebase/firestore';
 import type { Recipe } from './App';
+import { extractYoutubeId } from './youtubeParser';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA6dmsBjFwR1e9lYXzGuPlEAmlx6PsdjjM',
@@ -72,6 +73,72 @@ export async function organizeRecipePhoto(dataUrl: string) {
     }]);
   }
   return JSON.parse(result.response.text());
+}
+
+// ---------------------------------------------------------------------------
+// 서버(/api/...) 없이 Gemini로 직접 처리하는 기능들 (GitHub Pages는 서버가 없어요)
+// ---------------------------------------------------------------------------
+
+async function generateWithRetry(parts: Parameters<typeof recipeImageModel.generateContent>[0]) {
+  try {
+    return await recipeImageModel.generateContent(parts);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/\b503\b|deadline expired|overloaded/i.test(message)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return await recipeImageModel.generateContent(parts);
+  }
+}
+
+function parseJsonText(text: string) {
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end < 0) throw new Error('AI 응답을 해석하지 못했어요.');
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+/**
+ * 유튜브 링크 -> 레시피 추출. 기존 /api/extract-youtube 와 같은 모양({ recipe, videoId })을 돌려줘서
+ * App.tsx 의 나머지 코드는 그대로 쓸 수 있어요. (공개/일부 공개 영상만 가능)
+ */
+export async function extractYoutubeRecipe(url: string) {
+  const videoId = extractYoutubeId(url);
+  if (!videoId) throw new Error('유튜브 링크만 지원해요.');
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  const prompt = `이 요리 영상을 보고 레시피를 정리해 JSON만 반환해. 영상에서 확인할 수 없는 내용은 추측하지 말고 빈 문자열로 둬.
+형식: {"name":"요리 이름","cat":"카테고리","min":25,"serv":2,"ing":"재료와 분량, 줄바꿈 구분","sau":"양념과 분량, 줄바꿈 구분","steps":"조리 순서, 줄바꿈 구분","tip":"팁","summary":"한 줄 소개","difficulty":"쉬움/보통/어려움 중 하나","calories":"1인분 예상 칼로리 (모르면 빈 문자열)","tags":["#태그"]}
+규칙:
+- steps는 각 줄 맨 앞에 그 단계가 영상에서 나오는 시간을 mm:ss 로 붙여. 예: 01:15 양념장을 만든다
+- 재료와 양념은 한 줄에 하나씩 "이름 분량" 형태로 써. 예: 돼지고기 600g
+- min은 조리 시간(분)을 숫자로, serv는 인분 수를 숫자로 써.
+- 카테고리는 밑반찬/국·찌개/메인 요리/면·분식/밥·죽/간식·디저트/기타 중 하나로 해.`;
+
+  const result = await generateWithRetry([
+    { fileData: { mimeType: 'video/mp4', fileUri: watchUrl } },
+    prompt,
+  ]);
+  return { recipe: parseJsonText(result.response.text()), videoId, thumbnail: '' };
+}
+
+/** 요리 도우미 채팅 (기존 /api/ai/chef-chat 대체) */
+export async function askChef(
+  question: string,
+  currentRecipe: Recipe | undefined,
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+): Promise<string> {
+  const history = messages
+    .slice(-8)
+    .map((m) => `${m.role === 'user' ? '사용자' : '요리 도우미'}: ${m.content}`)
+    .join('\n');
+  const recipeText = currentRecipe
+    ? `현재 레시피: ${currentRecipe.name}\n재료: ${currentRecipe.ing}\n양념: ${currentRecipe.sau}\n조리 순서: ${currentRecipe.steps}`
+    : '현재 선택한 레시피는 없어요.';
+  const prompt = `너는 친절한 한국 요리 도우미야. 아래 레시피와 대화를 참고해서 마지막 질문에 3~5문장으로 짧고 실용적으로 한국어로 답해. JSON이 아니라 일반 문장으로 답해.\n\n${recipeText}\n\n대화:\n${history}\n\n질문: ${question}`;
+  const chatModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite' });
+  const result = await chatModel.generateContent(prompt);
+  return result.response.text().trim();
 }
 
 export async function getPublicRecipes(localRecipes: Recipe[] = []): Promise<Recipe[]> {

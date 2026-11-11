@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getPublicRecipes, savePublicRecipes, organizeRecipePhoto } from './firebase';
+import { getPublicRecipes, savePublicRecipes, organizeRecipePhoto, extractYoutubeRecipe, askChef } from './firebase';
 
 export interface Recipe {
   id: number;
@@ -349,8 +349,8 @@ export default function App() {
       setSnsMessage('유튜브 링크를 입력해 주세요.');
       return;
     }
-    if (!/youtu|instagr/i.test(targetUrl)) {
-      setSnsMessage('유튜브나 인스타그램 링크를 올바르게 입력해 주세요.');
+    if (!/youtu/i.test(targetUrl)) {
+      setSnsMessage('유튜브 링크를 올바르게 입력해 주세요. (인스타그램은 아직 지원하지 않아요)');
       return;
     }
 
@@ -358,17 +358,7 @@ export default function App() {
     setSnsMessage('유튜브 영상과 더보기란을 분석하여 레시피를 추출하는 중입니다... 🍳');
 
     try {
-      const response = await fetch('/api/extract-youtube', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: targetUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('레시피 추출에 실패했습니다.');
-      }
-
-      const data = await response.json();
+      const data = await extractYoutubeRecipe(targetUrl);
       const extracted = data.recipe || {};
       const parsedVideoId = extractYtId(targetUrl);
       const responseVideoId = typeof data.videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(data.videoId) ? data.videoId : '';
@@ -565,19 +555,10 @@ export default function App() {
     const currentRecipe = recipes.find((r) => r.id === curChefRecipeId);
 
     try {
-      const res = await fetch('/api/ai/chef-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question,
-          currentRecipe,
-          messages: newMessages,
-        }),
-      });
-      const data = await res.json();
+      const reply = await askChef(question, currentRecipe, newMessages);
       setChatMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: data.reply || '맛있게 조리해보세요!' },
+        { role: 'assistant', content: reply || '맛있게 조리해보세요!' },
       ]);
     } catch {
       setChatMessages((prev) => [
