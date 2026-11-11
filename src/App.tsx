@@ -751,7 +751,6 @@ export default function App() {
               <button
                 type="button"
                 className="ic"
-                style={{ background: 'var(--cd)' }}
                 onClick={() => setEditingRecipe(null)}
                 title="수정 취소"
               >
@@ -841,7 +840,7 @@ export default function App() {
               <button
                 type="button"
                 className="ic"
-                style={{ background: 'var(--cd)' }}
+               
                 onClick={() => setViewRecipeId(null)}
                 title="뒤로가기"
               >
@@ -967,24 +966,23 @@ export default function App() {
             )}
 
             <div className="rcp">
-              <h2 className="title">{currentViewingRecipe.name}</h2>
+              <h2 className="title">{currentViewingRecipe.name}
+
+
+                
+              </h2>
               <div className="metabar">
-                <p className="meta">
-                  {currentViewingRecipe.cat} · {SL[currentViewingRecipe.src] || '레시피'}
-                  {currentViewingRecipe.difficulty ? ` · 난이도 ${currentViewingRecipe.difficulty}` : ''}
-                </p>
-                <div className="stepper">
-                  <button onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
-                  <span id="sgn">{servings}인분</span>
-                  <button onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
-                </div>
-              </div>
+              <p className="meta">
+                {currentViewingRecipe.cat} · {SL[currentViewingRecipe.src] || '레시피'}
+                {currentViewingRecipe.difficulty ? ` · 난이도 ${currentViewingRecipe.difficulty}` : ''}
+              </p>
+            </div>
 
               {/* 3. 재료 영역 (숨기기/펼치기 토글 기능 + CSS 버튼 적용) */}
               <h3 
                 className="ingredient-heading" 
                 onClick={() => setIsIngredientsOpen((prev) => !prev)}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', marginTop: '20px' }}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', marginTop: '25px' }}
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <span>재료</span>
@@ -997,7 +995,16 @@ export default function App() {
                   {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
                 </button>
               </h3>
-
+{isIngredientsOpen && (
+  <div className="serv-bar">
+    <span></span>
+    <div className="stepper">
+      <button onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
+      <span id="sgn">{servings}인분</span>
+      <button onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
+    </div>
+  </div>
+)}
               {isIngredientsOpen && (
                 <div className="ingredient-list">
                   {[...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].length > 0
@@ -1355,7 +1362,7 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        style={{ background: 'var(--cd)' }}
+       
         onClick={() => setImp('')}
         title="뒤로가기"
       >
@@ -1413,7 +1420,7 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        style={{ background: 'var(--cd)' }}
+       
         onClick={() => setImp('')}
         title="뒤로가기"
       >
@@ -1503,7 +1510,6 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        style={{ background: 'var(--cd)' }}
         onClick={() => setImp('')}
         title="뒤로가기"
       >
@@ -1565,7 +1571,6 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        style={{ background: 'var(--cd)' }}
         onClick={() => setImp('')}
         title="뒤로가기"
       >
