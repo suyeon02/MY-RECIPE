@@ -16,6 +16,18 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// 👉 이 App Check 초기화 코드가 코드에 들어있어야 합니다!
+if (typeof window !== 'undefined') {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(
+      import.meta.env.VITE_FIREBASE_APP_CHECK_KEY
+    ),
+    isTokenAutoRefreshEnabled: true
+  });
+}
+
+
 initializeAppCheck(app, {
   provider: new ReCaptchaEnterpriseProvider('6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'),
   isTokenAutoRefreshEnabled: true,
