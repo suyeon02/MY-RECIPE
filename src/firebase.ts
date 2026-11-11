@@ -17,21 +17,20 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// 👉 이 App Check 초기화 코드가 코드에 들어있어야 합니다!
+// 👉 App Check 초기화 (중복 방지 및 Vercel 환경변수 연동)
 if (typeof window !== 'undefined') {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(
-      import.meta.env.VITE_FIREBASE_APP_CHECK_KEY
-    ),
-    isTokenAutoRefreshEnabled: true
-  });
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(
+        import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || '6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'
+      ),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.log('App Check already initialized');
+  }
 }
 
-
-initializeAppCheck(app, {
-  provider: new ReCaptchaEnterpriseProvider('6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'),
-  isTokenAutoRefreshEnabled: true,
-});
 const db = getFirestore(app);
 const publicRecipes = collection(db, 'publicRecipes');
 const ai = getAI(app, { backend: new GoogleAIBackend() });
