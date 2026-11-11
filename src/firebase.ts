@@ -3,10 +3,7 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { collection, deleteDoc, doc, getDocs, getFirestore, setDoc } from 'firebase/firestore';
 import type { Recipe } from './App';
-function extractYoutubeId(url: string): string | null {
-  const match = url.trim().match(/(?:youtu\.be\/|v\/|embed\/|watch\?v=|&v=|shorts\/)([a-zA-Z0-9_-]{11})/);
-  return match ? match[1] : null;
-}
+import { extractYoutubeId } from './youtubeParser';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA6dmsBjFwR1e9lYXzGuPlEAmlx6PsdjjM',
@@ -24,9 +21,7 @@ const app = initializeApp(firebaseConfig);
 if (typeof window !== 'undefined') {
   try {
     initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(
-  import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || '6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'
-),
+      provider: new ReCaptchaEnterpriseProvider('6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'),
       isTokenAutoRefreshEnabled: true,
     });
   } catch (error) {
