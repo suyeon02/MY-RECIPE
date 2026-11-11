@@ -4,7 +4,6 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-ch
 import { collection, deleteDoc, doc, getDocs, getFirestore, setDoc } from 'firebase/firestore';
 import type { Recipe } from './App';
 
-// Public Firebase web configuration from the existing MY RECIPE project.
 const firebaseConfig = {
   apiKey: 'AIzaSyA6dmsBjFwR1e9lYXzGuPlEAmlx6PsdjjM',
   authDomain: 'my-recipe-3008f.firebaseapp.com',
@@ -17,7 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// 👉 App Check 초기화 (중복 방지 및 Vercel 환경변수 연동)
+// 👉 App Check 단일 초기화 및 중복 방지 처리
 if (typeof window !== 'undefined') {
   try {
     initializeAppCheck(app, {
@@ -90,7 +89,6 @@ export async function savePublicRecipes(recipes: Recipe[]): Promise<void> {
   const currentIds = new Set(recipes.map((recipe) => String(recipe.id)));
   await Promise.all(existing.docs.filter((item) => !currentIds.has(item.id)).map((item) => deleteDoc(item.ref)));
   await Promise.all(recipes.map((recipe) => {
-    // Firestore rejects undefined fields and large browser-only data URL photos.
     const safeRecipe = Object.fromEntries(
       Object.entries(recipe).filter(([key, value]) =>
         value !== undefined && !(key === 'img' && typeof value === 'string' && value.startsWith('data:'))
