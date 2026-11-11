@@ -115,7 +115,9 @@ const getIngredientIcon = (name: string) =>
   INGREDIENT_ICONS.find(([pattern]) => pattern.test(name))?.[1] || '🍽️';
 
 const DownloadIcon = () => (
-  <svg className="download-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <svg className="download-icon" width="32"  stroke="#505050"
+strokeWidth="0.4"
+strokeLinejoin="round" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <path d="M4.97 12.97a.75.75 0 101.06 1.06L11 9.06v12.19a.75.75 0 001.5 0V9.06l4.97 4.97a.75.75 0 101.06-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25zM4.75 3.5a.75.75 0 010-1.5h14.5a.75.75 0 010 1.5H4.75z" />
   </svg>
 );
@@ -126,8 +128,21 @@ const CopyIcon = () => (
   </svg>
 );
 
+
 const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
-  <svg className="heart-icon" width="23" height="23" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <svg
+    className="heart-icon"
+    width="23"
+    height="23"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    stroke="#505050"
+strokeWidth="0.4"
+strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
     {filled ? (
       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
     ) : (
@@ -139,16 +154,24 @@ const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
   </svg>
 );
 
+
 const TrashIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#505050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
   </svg>
 );
 
 
 const EditIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#505050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+);
+
+// 뒤로가기 화살표 SVG 아이콘
+const BackIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path fillRule="evenodd" d="M10.78 19.03a.75.75 0 01-1.06 0l-6.25-6.25a.75.75 0 010-1.06l6.25-6.25a.75.75 0 111.06 1.06L5.81 11.5h14.44a.75.75 0 010 1.5H5.81l4.97 4.97a.75.75 0 010 1.06z" />
   </svg>
 );
 
@@ -260,6 +283,10 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [chefInput, setChefInput] = useState('');
   const [chefLoading, setChefLoading] = useState(false);
+
+
+//재료 리스트
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
 
   // Load the public shared recipe list on open; seed an empty collection from local recipes.
   useEffect(() => {
@@ -718,7 +745,19 @@ export default function App() {
           /* =========================================================
               SCREEN 2: RECIPE EDITOR
              ========================================================= */
-          <div>
+          <div className="recipe-edit-container">
+            {/* 상단 뒤로가기(취소) 버튼 */}
+            <div style={{ marginBottom: '16px', marginTop: '12px' }}>
+              <button
+                type="button"
+                className="ic"
+                style={{ background: 'var(--cd)' }}
+                onClick={() => setEditingRecipe(null)}
+                title="수정 취소"
+              >
+                <BackIcon />
+              </button>
+            </div>
             <form
               className="recipe-editor-form"
               onSubmit={(e) => {
@@ -795,8 +834,53 @@ export default function App() {
           /* =========================================================
               SCREEN 3: RECIPE DETAIL VIEW
              ========================================================= */
-          <div className="recipe-detail">
-            {/* Hero Image Box - Fills entire container with cover */}
+      <div className="recipe-detail">
+            {/* 1. 상단 바: 뒤로가기 버튼 + [기존 유지] 하트 & 수정/삭제 버튼 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', marginTop: '12px' }}>
+              {/* 왼쪽: 뒤로가기 버튼 */}
+              <button
+                type="button"
+                className="ic"
+                style={{ background: 'var(--cd)' }}
+                onClick={() => setViewRecipeId(null)}
+                title="뒤로가기"
+              >
+                <BackIcon />
+              </button>
+
+              {/* 오른쪽: 기존에 있던 즐겨찾기, 수정, 삭제 버튼 (유지) */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="ic"
+                  style={{ color: currentViewingRecipe.fav ? 'var(--or)' : 'var(--sub)', background: 'var(--cd)' }}
+                  onClick={(e) => toggleFav(currentViewingRecipe.id, e)}
+                  title="즐겨찾기"
+                >
+                  <HeartIcon filled={!!currentViewingRecipe.fav} />
+                </button>
+                <button
+                  type="button"
+                  className="ic"
+                  style={{ background: 'var(--cd)' }}
+                  onClick={() => setEditingRecipe({ ...currentViewingRecipe })}
+                  title="레시피 수정"
+                >
+                  <EditIcon />
+                </button>
+                <button
+                  type="button"
+                  className={`ic ${deleteConfirmId === currentViewingRecipe.id ? 'rd' : ''}`}
+                  style={{ background: deleteConfirmId === currentViewingRecipe.id ? '#e5484d' : 'var(--cd)' }}
+                  onClick={() => handleDelete(currentViewingRecipe.id)}
+                  title="레시피 삭제"
+                >
+                  {deleteConfirmId === currentViewingRecipe.id ? '삭제 확인' : <TrashIcon />}
+                </button>
+              </div>
+            </div>
+
+            {/* 2. 사진 (hero) 영역 - 사진 위에는 버튼 없음 */}
             <div className="hero">
               {isPlayingVideo && extractYtId(currentViewingRecipe.url) ? (
                 <iframe
@@ -868,34 +952,6 @@ export default function App() {
                   )}
                 </>
               )}
-
-              <button
-                className="ic hero-fav"
-                style={{ color: currentViewingRecipe.fav ? 'var(--or)' : 'var(--sub)' }}
-                onClick={(e) => toggleFav(currentViewingRecipe.id, e)}
-                title="즐겨찾기"
-              >
-                <HeartIcon filled={!!currentViewingRecipe.fav} />
-              </button>
-
-              {/* Action buttons on hero */}
-              <span className="acts">
-               
-               <button
-  className="ic"
-  onClick={() => setEditingRecipe({ ...currentViewingRecipe })}
-  title="레시피 수정"
->
-  <EditIcon />
-</button>
-               <button
-  className={`ic ${deleteConfirmId === currentViewingRecipe.id ? 'rd' : ''}`}
-  onClick={() => handleDelete(currentViewingRecipe.id)}
-  title="레시피 삭제"
->
-  {deleteConfirmId === currentViewingRecipe.id ? '삭제 확인' : <TrashIcon />}
-</button>
-              </span>
             </div>
 
             {currentViewingRecipe.url && (
@@ -923,36 +979,49 @@ export default function App() {
                   <button onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
                 </div>
               </div>
-              <h3 className="ingredient-heading">
-                <span>재료</span>
-                <span className="base-servings">
-                  기준 {currentViewingRecipe.serv || 2}인분
-                  {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
-                </span>
+
+              {/* 3. 재료 영역 (숨기기/펼치기 토글 기능 + CSS 버튼 적용) */}
+              <h3 
+                className="ingredient-heading" 
+                onClick={() => setIsIngredientsOpen((prev) => !prev)}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', marginTop: '20px' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span>재료</span>
+                  <span className="base-servings">
+                    기준 {currentViewingRecipe.serv || 2}인분
+                    {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
+                  </span>
+                </div>
+                <button type="button" className="ingredient-toggle-btn">
+                  {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
+                </button>
               </h3>
-              {/* Ingredients and seasonings in one list */}
-              <div className="ingredient-list">
-            {[...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].length > 0
-              ? [...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].map((line, idx) => {
-                  const ingredient = splitIngredientLine(line);
-                  const factor = servings / (currentViewingRecipe.serv || 2);
-                  const amount = scaleIngredientAmount(ingredient.amount, factor);
-                  const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
-                  return (
-                    <div key={idx} className="ing">
-                      <span className="tile">{getIngredientIcon(ingredient.name)}</span>
-                      <span className="nm">{ingredient.name}</span>
-                      {amount && (
-                        <span className="a">
-                          {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
-                          {amountParts?.[3] && <small>{amountParts[3]}</small>}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              : <p className="hint">재료 정보가 없어요.</p>}
-              </div>
+
+              {isIngredientsOpen && (
+                <div className="ingredient-list">
+                  {[...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].length > 0
+                    ? [...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].map((line, idx) => {
+                        const ingredient = splitIngredientLine(line);
+                        const factor = servings / (currentViewingRecipe.serv || 2);
+                        const amount = scaleIngredientAmount(ingredient.amount, factor);
+                        const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
+                        return (
+                          <div key={idx} className="ing">
+                            <span className="tile">{getIngredientIcon(ingredient.name)}</span>
+                            <span className="nm">{ingredient.name}</span>
+                            {amount && (
+                              <span className="a">
+                                {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
+                                {amountParts?.[3] && <small>{amountParts[3]}</small>}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    : <p className="hint">재료 정보가 없어요.</p>}
+                </div>
+              )}
 
               {/* Steps */}
               <h3>조리 순서</h3>
@@ -1280,7 +1349,19 @@ export default function App() {
               </div>
             ) : imp === 'sns' ? (
               /* CORE CHANGED COMPONENT: SNS RECIPE EXTRACTOR */
-              <div>
+             <div>
+    {/* 상단 뒤로가기 버튼 */}
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        className="ic"
+        style={{ background: 'var(--cd)' }}
+        onClick={() => setImp('')}
+        title="뒤로가기"
+      >
+        <BackIcon />
+      </button>
+    </div>
 <h2>SNS 링크로 가져오기</h2>
 
                 <input
@@ -1324,7 +1405,23 @@ export default function App() {
               </div>
             ) : imp === 'my' ? (
               /* Direct Manual Entry */
+
+              
               <div>
+    {/* 상단 뒤로가기 버튼 */}
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        className="ic"
+        style={{ background: 'var(--cd)' }}
+        onClick={() => setImp('')}
+        title="뒤로가기"
+      >
+        <BackIcon />
+      </button>
+    </div>
+
+                
 <h2>직접 작성</h2>
 
                 <input
@@ -1400,7 +1497,19 @@ export default function App() {
               </div>
             ) : imp === 'photo' ? (
               /* Photo Register Entry */
-              <div>
+             <div>
+    {/* 상단 뒤로가기 버튼 */}
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        className="ic"
+        style={{ background: 'var(--cd)' }}
+        onClick={() => setImp('')}
+        title="뒤로가기"
+      >
+        <BackIcon />
+      </button>
+    </div>
                 <h2>사진으로 등록</h2>
                 <div className="row">
                   <label className="bt o" htmlFor="p_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -1451,6 +1560,18 @@ export default function App() {
               SCREEN 7: AI CHEF CONSULTATION
              ========================================================= */
           <div>
+    {/* 상단 뒤로가기 버튼 */}
+    <div style={{ marginBottom: '16px' }}>
+      <button
+        type="button"
+        className="ic"
+        style={{ background: 'var(--cd)' }}
+        onClick={() => setImp('')}
+        title="뒤로가기"
+      >
+        <BackIcon />
+      </button>
+    </div>
             <h2>AI 셰프</h2>
             <select
               value={curChefRecipeId}

@@ -904,6 +904,7 @@ nav .nav-icon {
 
 
 
+
 .ing {
   display: flex;
   align-items: center;
@@ -1031,7 +1032,6 @@ nav .nav-icon {
   border-radius: 18px;
   border: 0;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--sh);
   font-size: 16px;
   padding: 0;
   display: flex;
@@ -1278,10 +1278,35 @@ nav .nav-icon {
   place-items: center;
 }
 
+/* 재료 토글 버튼 (숨기기 / 펼치기) 스타일 */
+.ingredient-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--tile);
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+
+
+.ingredient-toggle-btn:active {
+  transform: scale(0.96);
+}
+
+
+
+
 .mdl-h .download-icon { width: 32px; height: 32px; }
 .exp-subtitle { color: #80766a; font-size: 16px; line-height: 1.5; margin: 0 0 24px; }
 .exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0 0 22px; }
-.exp-selectall { border: 0; border-radius: 999px;  border: 1px solid #ff7900; color: #ff7900; font-weight: 500; font-size: 15px; padding: 11px 18px; cursor: pointer; }
+.exp-selectall { border: 0; border-radius: 999px;  border: 1px solid #ff7900; color: #ff7900; font-weight: 500; font-size: 15px; padding: 9px 16px; cursor: pointer; }
 .exp-count { color: #80766a; font-size: 15px; }
 .exp-list { max-height: 260px; overflow-y: auto; margin: 0px 15px 30px; }
 .exp-item:last-child { border-bottom: 0; }
@@ -1294,7 +1319,7 @@ nav .nav-icon {
   align-items: center;
   gap: 14px;
   min-height: 70px;
-  padding: 12px 20px;
+  padding: 0px 18px 0px 10px;
   border-bottom: 1px solid #ece4d8;
   cursor: pointer;
   box-sizing: border-box;
@@ -1314,8 +1339,8 @@ nav .nav-icon {
   color: var(--sub);
   margin-left: 8px;        /* 이름과 카테고리 사이 간격 확보 */
 }
-.exp-actions { display: flex; gap: 12px; margin: 0; }
-.exp-action { flex: 1; min-height: 58px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
+.exp-actions { display: flex; gap: 12px; margin:  0px 15px; }
+.exp-action { flex: 1; min-height: 56px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
 .exp-copy { background: #f1ede5; color: #2b2620; }
 .exp-share { background: #ff7900; color: #fff; }
 @media (max-width: 520px) {
@@ -1347,11 +1372,11 @@ nav .nav-icon {
   .rcp{--card:#26221e; --text:#f1ebe2; --sub:#a89d8f; --line:#3a342d; --accent:#ff8a2b; --accent-soft:#3a2a1b; --accent-text:#1b1815; --tile:#352f28}
 }
 
-.rcp .title{font-size:26px;margin:20px 0 2px;letter-spacing:-.5px}
-.rcp .metabar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 6px}
+.rcp .title{font-size:26px;margin:10px 100px 0px 2px;letter-spacing:-.5px}
+.rcp .metabar{display:flex;align-items:top;justify-content:space-between;gap:12px;margin: 10px 0 0 0px}
 .rcp .meta{color:var(--sub);font-size:14px;margin:0}
 .rcp .stepper{display:flex;flex:none;align-items:center;background:var(--tile);border-radius:30px;padding:4px 5px;box-shadow:none}
-.rcp .stepper button{width:34px;height:36px;padding:0;border:0;border-radius:12px;background:none;color:var(--sub);font-size:20px;font-weight:700;cursor:pointer}
+.rcp .stepper button{width:22px;height:34px;padding:0;border:0;border-radius:12px;background:none;color:var(--sub);font-size:20px;font-weight:700;cursor:pointer}
 .rcp .stepper span{min-width:52px;text-align:center;font-weight:600;font-size:15px;color:var(--text)}
 .rcp h3{font-size:22px;margin:28px 0 5px}
 .rcp .hint{font-size:13px;color:var(--sub);margin:0 0 4px}
