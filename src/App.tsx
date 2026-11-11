@@ -809,12 +809,15 @@ export default function App() {
               <label className="fl">기준 인분 (재료 분량이 몇 인분 기준인지)</label>
               <input name="serv" type="number" min={1} defaultValue={editingRecipe.serv || 2} />
 
-              <label className="fl">재료 및 분량 (한 줄에 하나씩)</label>
-              <textarea name="ing" id="e4" defaultValue={editingRecipe.ing || ''} />
-
-              <label className="fl">양념 및 분량</label>
-              <textarea name="sau" id="e5" defaultValue={editingRecipe.sau || ''} />
-
+              {/* 재료 및 양념 통합 입력 칸 */}
+            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
+            <textarea
+              id="ingredients-combined"
+              rows={5}
+              value={draftIngredients} // 혹은 통합된 state 변수명
+              onChange={(e) => setDraftIngredients(e.target.value)}
+              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
+            />
               <label className="fl">조리 순서 (한 줄에 한 단계 · 앞에 02:10 처럼 시간 표기 가능)</label>
               <textarea name="steps" id="e6" defaultValue={editingRecipe.steps || ''} />
 
@@ -980,22 +983,22 @@ export default function App() {
 
               {/* 3. 재료 영역 (숨기기/펼치기 토글 기능 + CSS 버튼 적용) */}
               <h3 
+              
                 className="ingredient-heading" 
                 onClick={() => setIsIngredientsOpen((prev) => !prev)}
                 style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', marginTop: '25px' }}
               >
+                
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                   <span>재료</span>
+                  
                   <span className="base-servings">
                     기준 {currentViewingRecipe.serv || 2}인분
                     {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
                   </span>
+                  
                 </div>
-                <button type="button" className="ingredient-toggle-btn">
-                  {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
-                </button>
-              </h3>
-{isIngredientsOpen && (
+                {isIngredientsOpen && (
   <div className="serv-bar">
     <span></span>
     <div className="stepper">
@@ -1005,6 +1008,11 @@ export default function App() {
     </div>
   </div>
 )}
+                <button type="button" className="ingredient-toggle-btn">
+                  {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
+                </button>
+              </h3>
+
               {isIngredientsOpen && (
                 <div className="ingredient-list">
                   {[...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].length > 0
@@ -1181,6 +1189,8 @@ export default function App() {
               <h3>최근 레시피</h3>
               <span>{recentRecipes.length}개 저장됨</span>
             </div>
+
+            
             <div className="hs">
               {recentRecipes.length > 0 ? (
                 recentRecipes.map((r) => (
@@ -1189,6 +1199,9 @@ export default function App() {
                     className="pc"
                     onClick={() => setViewRecipeId(r.id)}
                   >
+
+
+                    
                     <div className="ph">
                       {renderThumbnail(r, 'ph-inner')}
                       <span
@@ -1199,6 +1212,10 @@ export default function App() {
                         <HeartIcon filled={!!r.fav} />
                       </span>
                     </div>
+
+
+
+
                     <div className="nm">
                       <div>{r.name}</div>
                       <div className="s">{r.cat}</div>
@@ -1300,13 +1317,7 @@ export default function App() {
                         {r.cat} · {SL[r.src] || ''}
                       </div>
                     </div>
-                    <span
-                      className="hr"
-                      onClick={(e) => toggleFav(r.id, e)}
-                      style={{ color: r.fav ? 'var(--or)' : 'var(--sub)' }}
-                    >
-                      <HeartIcon filled={!!r.fav} />
-                    </span>
+                    
                   </div>
                 ))
               ) : (
@@ -1324,13 +1335,27 @@ export default function App() {
             {!imp ? (
               <div>
                 <h2>레시피 추가</h2>
+
+                
                 <div className="recipe-choice-list">
+                    <div className="cd mc recipe-choice" onClick={() => setImp('my')}>
+                    <span className="mi">✏️</span>
+                    <div className="recipe-choice-copy">
+                      <b>직접 작성</b>
+                      <div className="s">대충 적어도 AI가 깔끔하게 정리해줘요.</div>
+                    </div>
+                   
+                  </div>
                   <div className="cd mc recipe-choice" onClick={() => setImp('sns')}>
                     <span className="mi" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
     <YouTubeicon /></span>
+
+
+    
                     <div className="recipe-choice-copy">
+                      
                       <b>SNS 링크로 가져오기</b>
-                      <div className="s">유튜브 · 쇼츠 링크를 넣으면 AI가 레시피를 요약해줘요.</div>
+                      <div className="s">유튜브 링크를 넣으면 AI가 레시피를 요약해줘요.</div>
                     </div>
               
                   </div>
@@ -1339,19 +1364,12 @@ export default function App() {
                     <span className="mi">📷</span>
                     <div className="recipe-choice-copy">
                       <b>사진으로 등록</b>
-                      <div className="s">사진이나 손글씨 노트를 업로드하면, AI가 레시피를 <br />완성해 줘요</div>
+                      <div className="s">사진을 업로드하면 AI가 레시피를 완성해 줘요.</div>
                     </div>
                    
                   </div>
 
-                  <div className="cd mc recipe-choice" onClick={() => setImp('my')}>
-                    <span className="mi">✏️</span>
-                    <div className="recipe-choice-copy">
-                      <b>직접 작성</b>
-                      <div className="s">대충 적어도 AI가 요리 이름, 재료, 조리 순서에 맞춰 <br /> 깔끔하게 정리해줘요.</div>
-                    </div>
-                   
-                  </div>
+                
                 </div>
               </div>
             ) : imp === 'sns' ? (
@@ -1438,25 +1456,20 @@ export default function App() {
                   placeholder="레시피 이름 (예: 우리집 김치찌개)"
                 />
 
-                <label className="fl" htmlFor="direct-ingredients">재료 및 분량</label>
-                <textarea
-                  id="direct-ingredients"
-                  value={draftIngredients}
-                  onChange={(e) => setDraftIngredients(e.target.value)}
-                  placeholder="예: 돼지고기 300g, 양파 1/2개"
-                />
-
-                <label className="fl" htmlFor="direct-seasonings">양념 및 분량</label>
-                <textarea
-                  id="direct-seasonings"
-                  value={draftSeasonings}
-                  onChange={(e) => setDraftSeasonings(e.target.value)}
-                  placeholder="예: 간장 2큰술, 고춧가루 1큰술"
-                />
+                {/* 재료 및 양념 통합 입력 칸 */}
+            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
+            <textarea
+              id="ingredients-combined"
+              rows={5}
+              value={draftIngredients} // 혹은 통합된 state 변수명
+              onChange={(e) => setDraftIngredients(e.target.value)}
+              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
+            />
 
                 <label className="fl" htmlFor="direct-steps">만드는 순서</label>
                 <textarea
                   id="direct-steps"
+                  rows={5}
                   value={draftSteps}
                   onChange={(e) => setDraftSteps(e.target.value)}
                   placeholder="한 줄에 한 단계씩 적어 주세요."
@@ -1541,11 +1554,15 @@ export default function App() {
                     <label className="fl" htmlFor="photo-title">요리명</label>
                     <input id="photo-title" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="예: 된장찌개" />
 
-                    <label className="fl" htmlFor="photo-ingredients">재료 및 분량</label>
-                    <textarea id="photo-ingredients" value={draftIngredients} onChange={(e) => setDraftIngredients(e.target.value)} placeholder="한 줄에 하나씩 적어 주세요." />
-
-                    <label className="fl" htmlFor="photo-seasonings">양념 및 분량</label>
-                    <textarea id="photo-seasonings" value={draftSeasonings} onChange={(e) => setDraftSeasonings(e.target.value)} placeholder="한 줄에 하나씩 적어 주세요." />
+                    {/* 재료 및 양념 통합 입력 칸 */}
+            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
+            <textarea
+              id="ingredients-combined"
+              rows={5}
+              value={draftIngredients} // 혹은 통합된 state 변수명
+              onChange={(e) => setDraftIngredients(e.target.value)}
+              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
+            />
 
                     <label className="fl" htmlFor="photo-steps">만드는 순서</label>
                     <textarea id="photo-steps" value={draftSteps} onChange={(e) => setDraftSteps(e.target.value)} placeholder="한 줄에 한 단계씩 적어 주세요." />
