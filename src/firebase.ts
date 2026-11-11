@@ -21,7 +21,7 @@ if (typeof window !== 'undefined') {
   try {
     initializeAppCheck(app, {
       provider: new ReCaptchaEnterpriseProvider(
-        import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || '6LdU5hguAAAAANJN1ReVMVAXZWXhQpt3qPL90iJC'
+        import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || '6LdvlhouAAAAAXredEPJ6-rbelrtW4ez6mOx4c4'
       ),
       isTokenAutoRefreshEnabled: true,
     });
