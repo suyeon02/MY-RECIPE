@@ -3,7 +3,10 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import { collection, deleteDoc, doc, getDocs, getFirestore, setDoc } from 'firebase/firestore';
 import type { Recipe } from './App';
-import { extractYoutubeId } from './youtubeParser';
+function extractYoutubeId(url: string): string | null {
+  const match = url.trim().match(/(?:youtu\.be\/|v\/|embed\/|watch\?v=|&v=|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
 
 const firebaseConfig = {
   apiKey: 'AIzaSyA6dmsBjFwR1e9lYXzGuPlEAmlx6PsdjjM',
