@@ -1503,6 +1503,8 @@ nav .nav-icon {
 
 .rcp .ingredient-groups { display: grid; gap: 16px; margin-top: 10px; }
 .rcp .ingredient-group { min-width: 0; }
+.rcp .ingredient-group-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; }
+.rcp .ingredient-group-head .ingredient-group-title { margin: 0; }
 .rcp .ingredient-group-title { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 700; }
 .rcp .ingredient-group .ingredient-list { margin: 0; }
 
