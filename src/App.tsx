@@ -571,7 +571,7 @@ export default function App() {
       cat: String(formData.get('cat') || '기타'),
       serv: Number(formData.get('serv')) || 2,
       ing: LI(String(formData.get('ing') || '')).join('\n'),
-      sau: '',
+      sau: LI(String(formData.get('sau') || '')).join('\n'),
       steps: String(formData.get('steps') || ''),
       tip: String(formData.get('tip') || ''),
       url: String(formData.get('url') || '').trim(),
@@ -691,7 +691,7 @@ export default function App() {
     return selected
       .map(
         (r) =>
-          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념]\n${r.sau || '-'}\n\n[조리순서]\n${r.steps}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
+          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념장]\n${r.sau || '-'}\n\n[조리순서]\n${r.steps}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
       )
       .join('\n\n');
   };
@@ -890,15 +890,23 @@ export default function App() {
               <label className="fl">기준 인분 (재료 분량이 몇 인분 기준인지)</label>
               <input name="serv" type="number" min={1} defaultValue={editingRecipe.serv || 2} />
 
-              {/* 재료 및 양념 통합 입력 칸 */}
-            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
-            <textarea
-              id="ingredients-combined"
-              name="ing"
-              rows={7}
-              defaultValue={[...LI(editingRecipe.ing || ''), ...LI(editingRecipe.sau || '')].join('\n')}
-              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
-            />
+              <label className="fl" htmlFor="editor-ingredients">재료</label>
+              <textarea
+                id="editor-ingredients"
+                name="ing"
+                rows={5}
+                defaultValue={LI(editingRecipe.ing || '').join('\n')}
+                placeholder="예: 돼지고기 300g, 양파 1/2개"
+              />
+
+              <label className="fl" htmlFor="editor-seasonings">양념장</label>
+              <textarea
+                id="editor-seasonings"
+                name="sau"
+                rows={4}
+                defaultValue={LI(editingRecipe.sau || '').join('\n')}
+                placeholder="예: 간장 2큰술, 고춧가루 1큰술"
+              />
               <label className="fl">조리 순서 (한 줄에 한 단계 · 앞에 02:10 처럼 시간 표기 가능)</label>
               <textarea name="steps" id="e6" defaultValue={editingRecipe.steps || ''} />
 
@@ -1089,27 +1097,38 @@ export default function App() {
               </div>
 
               {isIngredientsOpen && (
-                <div className="ingredient-list">
-                  {[...LI(currentViewingRecipe.ing), ...LI(currentViewingRecipe.sau)].length > 0
-                    ? [...LI(currentViewingRecipe.ing), ...LI(currentViewingRecipe.sau)].map((line, idx) => {
-                        const ingredient = splitIngredientLine(line);
-                        const factor = servings / (currentViewingRecipe.serv || 2);
-                        const amount = scaleIngredientAmount(ingredient.amount, factor);
-                        const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
-                        return (
-                          <div key={idx} className="ing">
-                            <span className="tile">{getIngredientIcon(ingredient.name)}</span>
-                            <span className="nm">{ingredient.name}</span>
-                            {amount && (
-                              <span className="a">
-                                {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
-                                {amountParts?.[3] && <small>{amountParts[3]}</small>}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })
-                    : <p className="hint">재료 정보가 없어요.</p>}
+                <div className="ingredient-groups">
+                  {[
+                    { title: '재료', lines: LI(currentViewingRecipe.ing) },
+                    { title: '양념장', lines: LI(currentViewingRecipe.sau) },
+                  ].map((group) => group.lines.length > 0 && (
+                    <section className="ingredient-group" key={group.title}>
+                      <h4 className="ingredient-group-title">{group.title}</h4>
+                      <div className="ingredient-list">
+                        {group.lines.map((line, idx) => {
+                          const ingredient = splitIngredientLine(line);
+                          const factor = servings / (currentViewingRecipe.serv || 2);
+                          const amount = scaleIngredientAmount(ingredient.amount, factor);
+                          const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
+                          return (
+                            <div key={`${group.title}-${idx}`} className="ing">
+                              <span className="tile">{getIngredientIcon(ingredient.name)}</span>
+                              <span className="nm">{ingredient.name}</span>
+                              {amount && (
+                                <span className="a">
+                                  {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
+                                  {amountParts?.[3] && <small>{amountParts[3]}</small>}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                  {LI(currentViewingRecipe.ing).length === 0 && LI(currentViewingRecipe.sau).length === 0 && (
+                    <p className="hint">재료 정보가 없어요.</p>
+                  )}
                 </div>
               )}
 
@@ -1613,15 +1632,23 @@ export default function App() {
                   placeholder="레시피 이름 (예: 우리집 김치찌개)"
                 />
 
-                {/* 재료 및 양념 통합 입력 칸 */}
-            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
-            <textarea
-              id="ingredients-combined"
-              rows={5}
-              value={draftIngredients} // 혹은 통합된 state 변수명
-              onChange={(e) => setDraftIngredients(e.target.value)}
-              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
-            />
+                <label className="fl" htmlFor="direct-ingredients">재료</label>
+                <textarea
+                  id="direct-ingredients"
+                  rows={5}
+                  value={draftIngredients}
+                  onChange={(e) => setDraftIngredients(e.target.value)}
+                  placeholder="예: 돼지고기 300g, 양파 1/2개"
+                />
+
+                <label className="fl" htmlFor="direct-seasonings">양념장</label>
+                <textarea
+                  id="direct-seasonings"
+                  rows={4}
+                  value={draftSeasonings}
+                  onChange={(e) => setDraftSeasonings(e.target.value)}
+                  placeholder="예: 간장 2큰술, 고춧가루 1큰술"
+                />
 
                 <label className="fl" htmlFor="direct-steps">만드는 순서</label>
                 <textarea
@@ -1711,15 +1738,23 @@ export default function App() {
                     <label className="fl" htmlFor="photo-title">요리명</label>
                     <input id="photo-title" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="예: 된장찌개" />
 
-                    {/* 재료 및 양념 통합 입력 칸 */}
-            <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
-            <textarea
-              id="ingredients-combined"
-              rows={5}
-              value={draftIngredients} // 혹은 통합된 state 변수명
-              onChange={(e) => setDraftIngredients(e.target.value)}
-              placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
-            />
+                    <label className="fl" htmlFor="photo-ingredients">재료</label>
+                    <textarea
+                      id="photo-ingredients"
+                      rows={5}
+                      value={draftIngredients}
+                      onChange={(e) => setDraftIngredients(e.target.value)}
+                      placeholder="예: 돼지고기 300g, 양파 1/2개"
+                    />
+
+                    <label className="fl" htmlFor="photo-seasonings">양념장</label>
+                    <textarea
+                      id="photo-seasonings"
+                      rows={4}
+                      value={draftSeasonings}
+                      onChange={(e) => setDraftSeasonings(e.target.value)}
+                      placeholder="예: 간장 2큰술, 고춧가루 1큰술"
+                    />
 
                     <label className="fl" htmlFor="photo-steps">만드는 순서</label>
                     <textarea id="photo-steps" value={draftSteps} onChange={(e) => setDraftSteps(e.target.value)} placeholder="한 줄에 한 단계씩 적어 주세요." />
@@ -1868,7 +1903,7 @@ export default function App() {
               </button>
             </div>
             <p className="s exp-subtitle">
-              내보낼 레시피를 고른 뒤, 텍스트 파일(.txt)로 저장하거나 복사하세요.
+              내보낼 레시피를 고른 뒤,<br/>텍스트 파일(.txt)로 저장하거나 복사하세요.
             </p>
 
             <div className="exp-selectbar">

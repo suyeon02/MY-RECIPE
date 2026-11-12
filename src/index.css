@@ -334,7 +334,7 @@ nav button {
   background: none;
   padding: 8px 0;
   font-size: 10px;
-  color: #80766a;
+  color: #545454;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -1277,13 +1277,13 @@ nav .nav-icon {
 }
 
 .mdl-close {
-  width: 35px;
-  height: 35px;
+  width: 32px;
+  height: 32px;
   flex: none;
   border-radius: 50%;
   background: #f1ede5;
   border: 0;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   cursor: pointer;
   color: #80766a;
@@ -1306,7 +1306,7 @@ nav .nav-icon {
   background: none;
   line-height: 1.2;
   color: var(--sub);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1322,12 +1322,12 @@ nav .nav-icon {
 
 
 .mdl-h .download-icon { width: 32px; height: 32px; }
-.exp-subtitle { color: #80766a; font-size: 16px; line-height: 1.5; margin: 0 0 24px; }
-.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0px 12px; }
-.exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 500; font-size: 13px;  cursor: pointer; }
+.exp-subtitle { color: #80766a; font-size: 14px; line-height: 1.5; margin: 0 0 24px; }
+.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0px 5px; }
+.exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 600; font-size: 14px;  cursor: pointer; }
 .exp-selectall.on { background: #fff; color: #272524; }
-.exp-count { color: #ff7900; font-size: 13px; }
-.exp-list { max-height: 260px; overflow-y: auto; margin: 0px 15px 30px; }
+.exp-count { color: #ff7900; font-size: 14px; font-weight: 600;}
+.exp-list { max-height: 260px; overflow-y: auto; margin: 0px 0px 20px; }
 .exp-item:last-child { border-bottom: 0; }
 .exp-box { position: relative; width: 28px; height: 28px; flex: none; }
 .exp-check { appearance: none; -webkit-appearance: none; width: 100%; height: 100%; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: block; cursor: pointer; }
@@ -1343,7 +1343,7 @@ nav .nav-icon {
   align-items: center;
   gap: 14px;
   min-height: 70px;
-  padding: 0px 18px 0px 10px;
+  padding: 0px 15px 0px 10px;
   border-bottom: 1px solid #ece4d8;
   cursor: pointer;
   box-sizing: border-box;
@@ -1368,9 +1368,9 @@ nav .nav-icon {
 .exp-copy { background: #f1ede5; color: #2b2620; }
 .exp-share { background: #f1ede5; color: #2b2620; }
 @media (max-width: 520px) {
-  .mdl { padding: 20px; border-radius: 24px; }
+  .mdl { padding: 23px; border-radius: 24px; }
   .mdl-h b { font-size: 22px; }
-  .exp-subtitle { font-size: 15px; }
+  .exp-subtitle { font-size: 14px; }
   .exp-item { min-height: 64px; }
   .exp-name { font-size: 17px; }
   .exp-category { font-size: 13px; }
@@ -1459,7 +1459,7 @@ nav .nav-icon {
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: var(--sub);
+  color: #ff7a00;
   cursor: pointer;
 }
 .note-del-btn:disabled { opacity: 0.4; cursor: default; }
@@ -1468,3 +1468,9 @@ nav .nav-icon {
 .delete-page .del-list { margin: 0 0 24px; }
 .del-confirm-btn { background: rgb(255, 123, 0); color: #fff; margin-bottom: 24px; }
 .del-confirm-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* 레시피 상세: 재료와 양념 구분 */
+.rcp .ingredient-groups { display: grid; gap: 16px; margin-top: 10px; }
+.rcp .ingredient-group { min-width: 0; }
+.rcp .ingredient-group-title { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 700; }
+.rcp .ingredient-group .ingredient-list { margin: 0; }
