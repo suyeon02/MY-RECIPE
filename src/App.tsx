@@ -36,6 +36,12 @@ const isOldSeedRecipe = (r: Recipe) =>
 
 const LOCAL_STORAGE_KEY = 'my_recipes_proto';
 
+// 화면 비율(%) 조절 범위·단위·저장 키
+const ZOOM_STORAGE_KEY = 'my_recipes_zoom';
+const ZOOM_MIN = 70;
+const ZOOM_MAX = 150;
+const ZOOM_STEP = 10;
+
 // 저장돼 있던 조리시간(min) 값을 모든 레시피에서 제거
 const stripMin = (list: Recipe[]): Recipe[] =>
   list
@@ -55,8 +61,17 @@ const LI = (s: string) =>
     .map((x) => x.trim())
     .filter(Boolean);
 
+// '반'으로 적힌 분량을 숫자로 바꾼다. (반죽·반찬·반으로 자르기 같은 말은 건드리지 않는다)
+//   "반개"·"반 컵" → 0.5개·0.5컵   /   "1개 반"·"2큰술 반" → 1.5개·2.5큰술   /   "1과 반 개" → 1.5개
+const HALF_UNITS = '개|쪽|컵|모|줌|봉지|봉|캔|통|단|마리|장|알|큰술|작은술|스푼|숟가락|숟갈|근|병|포기|조각|덩이|공기|스쿱|꼬집';
+const normalizeHalf = (s: string) =>
+  s
+    .replace(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(${HALF_UNITS})\\s*반(?![가-힣])`, 'g'), (_m, n, u) => `${+n + 0.5}${u}`)
+    .replace(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*과\\s*반\\s*(${HALF_UNITS})`, 'g'), (_m, n, u) => `${+n + 0.5}${u}`)
+    .replace(new RegExp(`(^|\\s)반\\s*(?=(?:${HALF_UNITS}))`, 'g'), (_m, pre) => `${pre}0.5`);
+
 const splitIngredientLine = (line: string) => {
-  const cleanLine = line.replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
+  const cleanLine = normalizeHalf(line).replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
   const match = cleanLine.match(/^(.*\S)\s+((?:약\s*)?[\d½¼¾][\d./½¼¾~\-]*\s*\S*)$/);
   if (match) {
     let name = match[1];
@@ -79,7 +94,8 @@ const scaleIngredientAmount = (amount: string, ratio: number) => {
     const fractionValues: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75 };
     const numericValue = fractionValues[value] ?? Number(value);
     const scaled = (numericValue / (denominator ? Number(denominator) : 1)) * ratio;
-    const rounded = Number(scaled.toFixed(2));
+    // 0.5 단위로 반올림 (분량이 0으로 사라지지 않도록 최소 0.5)
+    const rounded = scaled > 0 ? Math.max(0.5, Math.round(scaled * 2) / 2) : 0;
     const resolvedUnit = unit ? unit.trim() : '';
     return `${approx || ''}${rounded}${resolvedUnit ? ' ' + resolvedUnit : ''}`;
   });
@@ -102,10 +118,15 @@ const getIngredientIcon = (name: string) =>
   INGREDIENT_ICONS.find(([pattern]) => pattern.test(name))?.[1] || '🍽️';
 
 const DownloadIcon = () => (
-  <svg className="download-icon" width="32"  stroke="#505050"
-strokeWidth="0.4"
-strokeLinejoin="round" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <svg className="download-icon" width="32" stroke="#505050" strokeWidth="0.4" strokeLinejoin="round" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <path d="M4.97 12.97a.75.75 0 101.06 1.06L11 9.06v12.19a.75.75 0 001.5 0V9.06l4.97 4.97a.75.75 0 101.06-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25zM4.75 3.5a.75.75 0 010-1.5h14.5a.75.75 0 010 1.5H4.75z" />
+  </svg>
+);
+
+const ZoomIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m16 16 4 4M11 8v6M8 11h6" />
   </svg>
 );
 
@@ -114,6 +135,8 @@ const CopyIcon = () => (
     <path fillRule="evenodd" d="M4.75 3A1.75 1.75 0 003 4.75v9.5c0 .966.784 1.75 1.75 1.75h1.5a.75.75 0 000-1.5h-1.5a.25.25 0 01-.25-.25v-9.5a.25.25 0 01.25-.25h9.5a.25.25 0 01.25.25v1.5a.75.75 0 001.5 0v-1.5A1.75 1.75 0 0014.25 3h-9.5zm5 5A1.75 1.75 0 008 9.75v9.5c0 .966.784 1.75 1.75 1.75h9.5A1.75 1.75 0 0021 19.25v-9.5A1.75 1.75 0 0019.25 8h-9.5zM9.5 9.75a.25.25 0 01.25-.25h9.5a.25.25 0 01.25.25v9.5a.25.25 0 01-.25.25h-9.5a.25.25 0 01-.25-.25v-9.5z" />
   </svg>
 );
+
+
 
 
 const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
@@ -253,7 +276,7 @@ export default function App() {
   const [draftTip, setDraftTip] = useState('');
   const [ocrLoading, setOcrLoading] = useState(false);
   const [photoAiError, setPhotoAiError] = useState("");
-    const [previewPhoto, setPreviewPhoto] = useState('');
+  const [previewPhoto, setPreviewPhoto] = useState('');
 
   // Delete confirm id
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -276,9 +299,49 @@ export default function App() {
   const [chefInput, setChefInput] = useState('');
   const [chefLoading, setChefLoading] = useState(false);
 
-
-//재료 리스트
+  // 재료 리스트
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
+
+  // 화면 비율(%): 70% ~ 150%, 10% 단위. 마지막 설정은 기기에 저장해 다음 접속에도 유지한다.
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    try {
+      const saved = Number(localStorage.getItem(ZOOM_STORAGE_KEY));
+      if (saved >= ZOOM_MIN && saved <= ZOOM_MAX) return Math.round(saved / ZOOM_STEP) * ZOOM_STEP;
+    } catch {
+      /* 저장값을 못 읽으면 기본값 사용 */
+    }
+    return 100;
+  });
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(ZOOM_MAX, prev + ZOOM_STEP));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(ZOOM_MIN, prev - ZOOM_STEP));
+  const handleZoomReset = () => setZoomLevel(100);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ZOOM_STORAGE_KEY, String(zoomLevel));
+    } catch (e) {
+      console.warn('Zoom save error:', e);
+    }
+  }, [zoomLevel]);
+
+  // 로고 줄의 돋보기 아이콘을 누르면 열리는 작은 비율 조절기
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const zoomWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!zoomOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (zoomWrapRef.current && !zoomWrapRef.current.contains(e.target as Node)) setZoomOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [zoomOpen]);
 
   // ---------------------------------------------------------------
   // 브라우저/폰 뒤로가기 연동: 화면 이동(탭·레시피 보기·수정·추가·내보내기)마다
@@ -445,7 +508,6 @@ export default function App() {
 
   /**
    * CORE: SNS YouTube Extraction
-   * Replaced broken fetchYoutubeDetails & window.claude with real Gemini backend
    */
   const handleExtractSns = async (urlToExtract?: string) => {
     const targetUrl = (urlToExtract || snsUrl).trim();
@@ -801,12 +863,45 @@ export default function App() {
   };
 
   return (
-    <div id="app">
+    <div id="app" style={{ zoom: `${zoomLevel / 100}` } as React.CSSProperties}>
       {/* 1. Header (when not in edit mode or detail view) */}
       {!editingRecipe && !viewRecipeId && !deleteMode && (
         <div className="top">
           <b className="lg">MY RECIPE</b>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            <div className="zoom-wrap" ref={zoomWrapRef}>
+              <button
+                type="button"
+                className="ic-btn"
+                onClick={() => setZoomOpen((v) => !v)}
+                title="화면 비율"
+                aria-label="화면 비율 조절"
+                aria-expanded={zoomOpen}
+                style={{ color: zoomLevel !== 100 ? 'var(--or)' : '#505050' }}
+              >
+                <ZoomIcon />
+              </button>
+              {zoomOpen && (
+                /* 확대·축소해도 같은 크기로 보이도록 역배율 적용 */
+                <div className="zoom-ctl zoom-pop" role="group" aria-label="화면 비율 조절" style={{ zoom: `${100 / zoomLevel}` }}>
+                  <button type="button" onClick={handleZoomOut} disabled={zoomLevel <= ZOOM_MIN} aria-label="화면 줄이기">
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    className={`zoom-val${zoomLevel !== 100 ? ' changed' : ''}`}
+                    onClick={handleZoomReset}
+                    title="100%로 되돌리기"
+                    aria-label={`현재 ${zoomLevel}%, 누르면 100%로 되돌리기`}
+                  >
+                    {zoomLevel}%
+                  </button>
+                  <button type="button" onClick={handleZoomIn} disabled={zoomLevel >= ZOOM_MAX} aria-label="화면 키우기">
+                    +
+                  </button>
+                </div>
+              )}
+            </div>
             <span
               className="ic-btn"
               onClick={() => {
@@ -864,12 +959,12 @@ export default function App() {
               )}
               <div className="row">
                 <label className="bt o" htmlFor="ec" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <CameraIcon />
-                   사진 찍기
+                  <CameraIcon />
+                  사진 찍기
                 </label>
-                <label className="bt o" htmlFor="eg"style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <GalleryIcon />
-                   갤러리 선택
+                <label className="bt o" htmlFor="eg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <GalleryIcon />
+                  갤러리 선택
                 </label>
               </div>
               <input id="ec" type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
@@ -925,14 +1020,13 @@ export default function App() {
           /* =========================================================
               SCREEN 3: RECIPE DETAIL VIEW
              ========================================================= */
-      <div className="recipe-detail">
+          <div className="recipe-detail">
             {/* 1. 상단 바: 뒤로가기 버튼 + [기존 유지] 하트 & 수정/삭제 버튼 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', marginTop: '12px' }}>
               {/* 왼쪽: 뒤로가기 버튼 */}
               <button
                 type="button"
                 className="ic"
-               
                 onClick={() => goBack(() => setViewRecipeId(null))}
                 title="뒤로가기"
               >
@@ -1058,153 +1152,156 @@ export default function App() {
             )}
 
             <div className="rcp">
-              <h2 className="title">{currentViewingRecipe.name}
-
-
-                
-              </h2>
+              <h2 className="title">{currentViewingRecipe.name}</h2>
               <div className="metabar">
-              <p className="meta">
-                {currentViewingRecipe.cat} · {SL[currentViewingRecipe.src] || '레시피'}
-                {currentViewingRecipe.difficulty ? ` · 난이도 ${currentViewingRecipe.difficulty}` : ''}
-              </p>
-            </div>
-
-              {/* 3. 재료 영역 (숨기기/펼치기 토글 기능 + CSS 버튼 적용) */}
-              <div className="ingredient-head">
-                <h3 className="ingredient-heading">재료</h3>
-                <button
-                  type="button"
-                  className="ingredient-toggle-btn"
-                  onClick={() => setIsIngredientsOpen((prev) => !prev)}
-                >
-                  {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
-                </button>
+                <p className="meta">
+                  {currentViewingRecipe.cat} · {SL[currentViewingRecipe.src] || '레시피'}
+                  {currentViewingRecipe.difficulty ? ` · 난이도 ${currentViewingRecipe.difficulty}` : ''}
+                </p>
               </div>
 
-              <div className="serv-bar">
-                <span className="base-servings">
-                  기준 {currentViewingRecipe.serv || 2}인분
-                  {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
-                </span>
-                {isIngredientsOpen && (
-                  <div className="stepper">
-                    <button type="button" onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
-                    <span id="sgn">{servings}인분</span>
-                    <button type="button" onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
+              {/* 3. 재료 영역 (내용이 있을 때만 헤더와 인분 조절 표시) */}
+              {(LI(currentViewingRecipe.ing).length > 0 || LI(currentViewingRecipe.sau).length > 0) && (
+                <>
+                  <div className="ingredient-head">
+                    <h3 className="ingredient-heading">재료</h3>
+                    <button
+                      type="button"
+                      className="ingredient-toggle-btn"
+                      onClick={() => setIsIngredientsOpen((prev) => !prev)}
+                    >
+                      {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {isIngredientsOpen && (
-                <div className="ingredient-groups">
-                  {[
-                    { title: '재료', lines: LI(currentViewingRecipe.ing) },
-                    { title: '양념장', lines: LI(currentViewingRecipe.sau) },
-                  ].map((group) => group.lines.length > 0 && (
-                    <section className="ingredient-group" key={group.title}>
-                      <h4 className="ingredient-group-title">{group.title}</h4>
-                      <div className="ingredient-list">
-                        {group.lines.map((line, idx) => {
-                          const ingredient = splitIngredientLine(line);
-                          const factor = servings / (currentViewingRecipe.serv || 2);
-                          const amount = scaleIngredientAmount(ingredient.amount, factor);
-                          const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
-                          return (
-                            <div key={`${group.title}-${idx}`} className="ing">
-                              <span className="tile">{getIngredientIcon(ingredient.name)}</span>
-                              <span className="nm">{ingredient.name}</span>
-                              {amount && (
-                                <span className="a">
-                                  {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
-                                  {amountParts?.[3] && <small>{amountParts[3]}</small>}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
-                  {LI(currentViewingRecipe.ing).length === 0 && LI(currentViewingRecipe.sau).length === 0 && (
-                    <p className="hint">재료 정보가 없어요.</p>
+                  <div className="serv-bar">
+                    <span className="base-servings">
+                      기준 {currentViewingRecipe.serv || 2}인분
+                      {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
+                    </span>
+                  </div>
+
+                  {isIngredientsOpen && (
+                    <div className="ingredient-groups">
+                      {[
+                        { title: '재료', lines: LI(currentViewingRecipe.ing) },
+                        { title: '양념장', lines: LI(currentViewingRecipe.sau) },
+                      ].filter((group) => group.lines.length > 0).map((group, groupIdx) => (
+                        <section className="ingredient-group" key={group.title}>
+                          <div className="ingredient-group-head">
+                            <h4 className="ingredient-group-title">{group.title}</h4>
+                            {groupIdx === 0 && (
+                              <div className="stepper">
+                                <button type="button" onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
+                                <span id="sgn">{servings}인분</span>
+                                <button type="button" onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ingredient-list">
+                            {group.lines.map((line, idx) => {
+                              const ingredient = splitIngredientLine(line);
+                              const factor = servings / (currentViewingRecipe.serv || 2);
+                              const amount = scaleIngredientAmount(ingredient.amount, factor);
+                              const amountParts = amount.match(/^(약\s*)?([0-9./½¼¾~-]+)\s*(.*)$/);
+                              return (
+                                <div key={`${group.title}-${idx}`} className="ing">
+                                  <span className="tile">{getIngredientIcon(ingredient.name)}</span>
+                                  <span className="nm">{ingredient.name}</span>
+                                  {amount && (
+                                    <span className="a">
+                                      {amountParts ? `${amountParts[1] || ''}${amountParts[2]}` : amount}
+                                      {amountParts?.[3] && <small>{amountParts[3]}</small>}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
                   )}
-                </div>
+                </>
               )}
 
-              {/* Steps */}
-              <h3>조리 순서</h3>
-            {currentViewingRecipe.url &&
-              L(currentViewingRecipe.steps).some((x) => TS.test(x.replace(/^\s*\d+\s*[.)]\s*/, ''))) && (
-                <p className="hint">시간이 표시된 단계를 누르면 영상이 그 구간으로 이동해요</p>
-              )}
+              {/* Steps (조리 순서가 존재할 때만 제목 표시) */}
+              {L(currentViewingRecipe.steps).length > 0 && (
+                <>
+                  <h3>조리 순서</h3>
+                  {currentViewingRecipe.url &&
+                    L(currentViewingRecipe.steps).some((x) => TS.test(x.replace(/^\s*\d+\s*[.)]\s*/, ''))) && (
+                      <p className="hint">시간이 표시된 단계를 누르면 영상이 그 구간으로 이동해요</p>
+                    )}
 
-            {L(currentViewingRecipe.steps).map((step, idx) => {
-              const normalizedStep = step.replace(/^\s*\d+\s*[.)]\s*/, '');
-              const timeMatch = normalizedStep.match(TS);
-              const timeStr = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '';
-              const cleanStep = timeMatch ? timeMatch[3] : normalizedStep;
-              const totalSec = timeMatch ? Number(timeMatch[1]) * 60 + Number(timeMatch[2]) : 0;
-              const videoTimestampUrl = currentViewingRecipe.url
-                ? `${currentViewingRecipe.url}${currentViewingRecipe.url.includes('?') ? '&' : '?'}t=${totalSec}`
-                : '';
+                  {L(currentViewingRecipe.steps).map((step, idx) => {
+                    const normalizedStep = step.replace(/^\s*\d+\s*[.)]\s*/, '');
+                    const timeMatch = normalizedStep.match(TS);
+                    const timeStr = timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : '';
+                    const cleanStep = timeMatch ? timeMatch[3] : normalizedStep;
+                    const totalSec = timeMatch ? Number(timeMatch[1]) * 60 + Number(timeMatch[2]) : 0;
+                    const videoTimestampUrl = currentViewingRecipe.url
+                      ? `${currentViewingRecipe.url}${currentViewingRecipe.url.includes('?') ? '&' : '?'}t=${totalSec}`
+                      : '';
 
-              return (
-                <div
-                  key={idx}
-                  className="card step"
-                  style={{ cursor: timeMatch ? 'pointer' : 'default' }}
-                  onClick={() => {
-                    if (timeMatch) {
-                      const totalSec = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
-                      const iframe = document.getElementById('yp') as HTMLIFrameElement;
-                      if (iframe && iframe.contentWindow) {
-                        iframe.contentWindow.postMessage(
-                          JSON.stringify({ event: 'command', func: 'seekTo', args: [totalSec, true] }),
-                          '*'
-                        );
-                        iframe.contentWindow.postMessage(
-                          JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
-                          '*'
-                        );
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      } else if (currentViewingRecipe.url) {
-                        window.open(
-                          `${currentViewingRecipe.url}${currentViewingRecipe.url.includes('?') ? '&' : '?'}t=${totalSec}`,
-                          '_blank'
-                        );
-                      }
-                    }
-                  }}
-                >
-                  <b className="num">{idx + 1}</b>
-                  <div className="sb">
-                    {timeStr && (videoTimestampUrl ? (
-                      <a
-                        className="chip"
-                        href={videoTimestampUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                    return (
+                      <div
+                        key={idx}
+                        className="card step"
+                        style={{ cursor: timeMatch ? 'pointer' : 'default' }}
+                        onClick={() => {
+                          if (timeMatch) {
+                            const totalSec = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
+                            const iframe = document.getElementById('yp') as HTMLIFrameElement;
+                            if (iframe && iframe.contentWindow) {
+                              iframe.contentWindow.postMessage(
+                                JSON.stringify({ event: 'command', func: 'seekTo', args: [totalSec, true] }),
+                                '*'
+                              );
+                              iframe.contentWindow.postMessage(
+                                JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+                                '*'
+                              );
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            } else if (currentViewingRecipe.url) {
+                              window.open(
+                                `${currentViewingRecipe.url}${currentViewingRecipe.url.includes('?') ? '&' : '?'}t=${totalSec}`,
+                                '_blank'
+                              );
+                            }
+                          }
+                        }}
                       >
-                        ▶ {timeStr}
-                      </a>
-                    ) : <span className="chip">{timeStr}</span>)}
-                    <p>{cleanStep}</p>
-                  </div>
-                </div>
-              );
-            })}
+                        <b className="num">{idx + 1}</b>
+                        <div className="sb">
+                          {timeStr && (videoTimestampUrl ? (
+                            <a
+                              className="chip"
+                              href={videoTimestampUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              ▶ {timeStr}
+                            </a>
+                          ) : <span className="chip">{timeStr}</span>)}
+                          <p>{cleanStep}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
 
-            {/* Tips */}
-            {currentViewingRecipe.tip && (
-              <>
-                <h3>나만의 팁</h3>
-                <div className="card tip">
-                  {currentViewingRecipe.tip}
-                </div>
-              </>
-            )}
+              {/* Tips (요리 팁이 존재할 때만 제목 및 카드 표시) */}
+              {currentViewingRecipe.tip && (
+                <>
+                  <h3>나만의 팁</h3>
+                  <div className="card tip">
+                    {currentViewingRecipe.tip}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : deleteMode ? (
@@ -1318,7 +1415,7 @@ export default function App() {
             {/* Categories */}
             <h3>카테고리</h3>
             <div className="cats">
-            <button
+              <button
                 className="ct"
                 onClick={() => {
                   setSelectedCat('');
@@ -1350,7 +1447,6 @@ export default function App() {
               <span>{recentRecipes.length}개 저장됨</span>
             </div>
 
-            
             <div className="hs">
               {recentRecipes.length > 0 ? (
                 recentRecipes.map((r) => (
@@ -1359,9 +1455,6 @@ export default function App() {
                     className="pc"
                     onClick={() => setViewRecipeId(r.id)}
                   >
-
-
-                    
                     <div className="ph">
                       {renderThumbnail(r, 'ph-inner')}
                       <span
@@ -1372,9 +1465,6 @@ export default function App() {
                         <HeartIcon filled={!!r.fav} />
                       </span>
                     </div>
-
-
-
 
                     <div className="nm">
                       <div>{r.name}</div>
@@ -1489,7 +1579,6 @@ export default function App() {
                         {r.cat} · {SL[r.src] || ''}
                       </div>
                     </div>
-                    
                   </div>
                 ))
               ) : (
@@ -1508,28 +1597,23 @@ export default function App() {
               <div>
                 <h2>레시피 추가</h2>
 
-                
                 <div className="recipe-choice-list">
-                    <div className="cd mc recipe-choice" onClick={() => setImp('my')}>
+                  <div className="cd mc recipe-choice" onClick={() => setImp('my')}>
                     <span className="mi">✏️</span>
                     <div className="recipe-choice-copy">
                       <b>직접 작성</b>
                       <div className="s">대충 적어도 AI가 깔끔하게 정리해줘요.</div>
                     </div>
-                   
                   </div>
                   <div className="cd mc recipe-choice" onClick={() => setImp('sns')}>
                     <span className="mi" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <YouTubeicon /></span>
+                      <YouTubeicon />
+                    </span>
 
-
-    
                     <div className="recipe-choice-copy">
-                      
                       <b>SNS 링크로 가져오기</b>
                       <div className="s">유튜브 링크를 넣으면 AI가 레시피를 요약해줘요.</div>
                     </div>
-              
                   </div>
 
                   <div className="cd mc recipe-choice" onClick={() => setImp('photo')}>
@@ -1538,32 +1622,28 @@ export default function App() {
                       <b>사진으로 등록</b>
                       <div className="s">사진을 업로드하면 AI가 레시피를 완성해 줘요.</div>
                     </div>
-                   
                   </div>
-
-                
                 </div>
               </div>
             ) : imp === 'sns' ? (
               /* CORE CHANGED COMPONENT: SNS RECIPE EXTRACTOR */
-             <div>
-    {/* 상단 뒤로가기 버튼 */}
-    <div style={{ marginBottom: '16px' }}>
-      <button
-        type="button"
-        className="ic"
-       
-        onClick={() => {
-          setSnsUrl('');
-          setSnsMessage('');
-          goBack(() => setImp(''));
-        }}
-        title="뒤로가기"
-      >
-        <BackIcon />
-      </button>
-    </div>
-<h2>SNS 링크로 가져오기</h2>
+              <div>
+                {/* 상단 뒤로가기 버튼 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    className="ic"
+                    onClick={() => {
+                      setSnsUrl('');
+                      setSnsMessage('');
+                      goBack(() => setImp(''));
+                    }}
+                    title="뒤로가기"
+                  >
+                    <BackIcon />
+                  </button>
+                </div>
+                <h2>SNS 링크로 가져오기</h2>
 
                 <input
                   id="u"
@@ -1606,24 +1686,20 @@ export default function App() {
               </div>
             ) : imp === 'my' ? (
               /* Direct Manual Entry */
-
-              
               <div>
-    {/* 상단 뒤로가기 버튼 */}
-    <div style={{ marginBottom: '16px' }}>
-      <button
-        type="button"
-        className="ic"
-       
-        onClick={() => goBack(() => setImp(''))}
-        title="뒤로가기"
-      >
-        <BackIcon />
-      </button>
-    </div>
+                {/* 상단 뒤로가기 버튼 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    className="ic"
+                    onClick={() => goBack(() => setImp(''))}
+                    title="뒤로가기"
+                  >
+                    <BackIcon />
+                  </button>
+                </div>
 
-                
-<h2>직접 작성</h2>
+                <h2>직접 작성</h2>
 
                 <input
                   id="d"
@@ -1670,11 +1746,11 @@ export default function App() {
                 <label className="fl">대표 사진 (선택)</label>
                 <div className="row">
                   <label className="bt o" htmlFor="my_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <CameraIcon />
-                     사진 찍기
+                    <CameraIcon />
+                    사진 찍기
                   </label>
                   <label className="bt o" htmlFor="my_fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <GalleryIcon />
+                    <GalleryIcon />
                     갤러리 선택
                   </label>
                 </div>
@@ -1701,24 +1777,26 @@ export default function App() {
               </div>
             ) : imp === 'photo' ? (
               /* Photo Register Entry */
-             <div>
-    {/* 상단 뒤로가기 버튼 */}
-    <div style={{ marginBottom: '16px' }}>
-      <button
-        type="button"
-        className="ic"
-        onClick={() => goBack(() => setImp(''))}
-        title="뒤로가기"
-      >
-        <BackIcon />
-      </button>
-    </div>
+              <div>
+                {/* 상단 뒤로가기 버튼 */}
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    className="ic"
+                    onClick={() => goBack(() => setImp(''))}
+                    title="뒤로가기"
+                  >
+                    <BackIcon />
+                  </button>
+                </div>
                 <h2>사진으로 등록</h2>
                 <div className="row">
                   <label className="bt o" htmlFor="p_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <CameraIcon /> 사진 찍기</label>
+                    <CameraIcon /> 사진 찍기
+                  </label>
                   <label className="bt o" htmlFor="p_fg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-    <GalleryIcon /> 갤러리 선택</label>
+                    <GalleryIcon /> 갤러리 선택
+                  </label>
                 </div>
                 <input id="p_fc" type="file" accept="image/*" capture="environment" hidden onChange={handlePhotoUpload} />
                 <input id="p_fg" type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
@@ -1775,17 +1853,17 @@ export default function App() {
               SCREEN 7: AI CHEF CONSULTATION
              ========================================================= */
           <div>
-    {/* 상단 뒤로가기 버튼 */}
-    <div style={{ marginBottom: '16px' }}>
-      <button
-        type="button"
-        className="ic"
-        onClick={() => goBack(() => setImp(''))}
-        title="뒤로가기"
-      >
-        <BackIcon />
-      </button>
-    </div>
+            {/* 상단 뒤로가기 버튼 */}
+            <div style={{ marginBottom: '16px' }}>
+              <button
+                type="button"
+                className="ic"
+                onClick={() => goBack(() => setImp(''))}
+                title="뒤로가기"
+              >
+                <BackIcon />
+              </button>
+            </div>
             <h2>AI 셰프</h2>
             <select
               value={curChefRecipeId}
@@ -1865,16 +1943,16 @@ export default function App() {
               className={tab === k ? 'on' : ''}
               aria-label={title}
               title={title}
-             onClick={() => {
-              setViewRecipeId(null);
-              setTab(k as any);
-              setImp('');
-              setSearchQuery(''); // 다른 탭 클릭 시 검색어 초기화
-              setSelectedCat(''); // 요리 노트 카테고리는 항상 '전체'로 초기화
-              setDeleteMode(false);
-              setSnsUrl('');
-              setSnsMessage('');
-            }}
+              onClick={() => {
+                setViewRecipeId(null);
+                setTab(k as any);
+                setImp('');
+                setSearchQuery(''); // 다른 탭 클릭 시 검색어 초기화
+                setSelectedCat(''); // 요리 노트 카테고리는 항상 '전체'로 초기화
+                setDeleteMode(false);
+                setSnsUrl('');
+                setSnsMessage('');
+              }}
             >
               <span
                 className="nav-icon"
@@ -1946,13 +2024,13 @@ export default function App() {
                 className="exp-action exp-copy"
                 onClick={copyRecipes}
               >
-                 복사하기
+                복사하기
               </button>
               <button
                 className="exp-action exp-share"
                 onClick={saveAsTextFile}
               >
-                 텍스트 파일로 저장
+                텍스트 파일로 저장
               </button>
             </div>
           </div>
@@ -1964,5 +2042,3 @@ export default function App() {
     </div>
   );
 }
-
-

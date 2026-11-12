@@ -28,7 +28,6 @@
     --sub: #a3a3a3;
     --bd: #333333;
     --sf: #2e2216;
-  --cat-tile: #292825;
     --cat-tile: #292825;
     --sh: none;
   }
@@ -70,9 +69,9 @@ body {
 #app {
   width: 100%;
   max-width: 480px;
-  min-height: 100vh;
-  min-height: 100dvh;
-  margin: auto;
+  /* 높이는 #root(100dvh)에 맞춰 늘어나게 둔다. zoom 안에서는 vh 단위도 같이 커지므로 min-height를 쓰지 않는다. */
+  align-self: stretch;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -107,7 +106,6 @@ h3 {
   align-items: center;
   padding: 14px 18px 6px;
   border: 0;
-  
   position: sticky;
   top: 0;
   background: var(--bg);
@@ -142,6 +140,71 @@ h3 {
   transform: scale(0.95);
 }
 
+/* 화면 비율 조절기: 돋보기 아이콘 아래에 뜨는 작은 팝오버 */
+.zoom-wrap {
+  position: relative;
+}
+
+.zoom-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.zoom-ctl {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  background: var(--cd);
+}
+
+.zoom-ctl button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tx);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zoom-ctl button:active:not(:disabled) {
+  background: var(--sf);
+}
+
+.zoom-ctl button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.zoom-ctl button:focus-visible {
+  outline: 2px solid var(--or);
+  outline-offset: 1px;
+}
+
+.zoom-ctl .zoom-val {
+  min-width: 60px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoom-ctl .zoom-val.changed {
+  color: var(--or);
+}
+
 .bk {
   background: none;
   border: 0;
@@ -157,7 +220,6 @@ h3 {
   font-size: 14px;
   font-weight: 100;
 }
-
 
 input,
 textarea,
@@ -236,9 +298,8 @@ textarea {
 .bt.o {
   background: var(--cd);
   color: black;
-   border: 1px solid var(--bd);
+  border: 1px solid var(--bd);
   border-radius: 30px;
-  background: var(--cd);
 }
 
 .cd {
@@ -258,14 +319,13 @@ textarea {
 
 .ch {
   display: inline-block;
-  border: 0;
   border-radius: 22px;
   padding: 9px 15px;
   margin: 0 6px 8px 0;
   font: inherit;
   font-size: 13px;
   background: var(--cd);
-   border: 1px solid var(--bd);
+  border: 1px solid var(--bd);
   color: var(--tx);
   text-decoration: none;
   cursor: pointer;
@@ -290,7 +350,7 @@ textarea {
 
 .fl {
   display: block;
-  font-weight: 500;
+  font-weight: 600;
   margin: 15px 0 12px;
   font-size: 17px;
 }
@@ -353,7 +413,6 @@ nav .nav-icon {
   width: 25px;
   height: 25px;
   margin-bottom: 7px;
-  /* 아이콘 이미지를 마스크로 쓰고 글자색(currentColor)으로 채워 텍스트와 항상 같은 색 */
   background-color: currentColor;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
@@ -656,7 +715,7 @@ nav .nav-icon {
 .recipe-note-list .lc .ph {
   align-self: stretch;
   width: 100px;
-  min-height: 108px;
+  min-height: 100px;
   height: auto;
   border-radius: 0;
 }
@@ -681,12 +740,12 @@ nav .nav-icon {
 }
 
 .recipe-note-list .lc .hr {
-  width: 44px;
-  height: 38px;
+  width: 48px;
+  height: 44px;
   border-radius: 12px;
   color: var(--or);
   box-shadow: none;
-  font-size: 21px;
+  font-size: 26px;
   margin: 0 12px 0 0;
 }
 
@@ -694,30 +753,20 @@ nav .nav-icon {
   color: #fff;
 }
 
-/* 요리 노트 목록(.recipe-note-list) 안에 있는 하트(hr) 버튼 크기 키우기 */
-.recipe-note-list .lc .hr{
-  width: 48px;  /* 버튼 영역 너비 확장 */
-  height: 44px; /* 버튼 영역 높이 확장 */
-  font-size: 26px; /* 이모지 또는 내부 아이콘 크기 키우기 */
-}
-
-/* SVG 하트 아이콘을 사용하는 경우 크기 직접 지정 */
 .recipe-note-list .lc .hr .heart-icon {
-  width: 24px;  /* SVG 가로 크기 */
-  height: 24px; /* SVG 세로 크기 */
+  width: 24px;
+  height: 24px;
 }
 
-/* 요리 노트 상단 즐겨찾기 필터 하트 버튼 크기 키우기 */
 .circ {
-  width: 48px;  /* 버튼 박스 너비 */
-  height: 48px; /* 버튼 박스 높이 */
+  width: 48px;
+  height: 48px;
 }
 
 .circ .heart-icon {
-  width: 28px;  /* 하트 아이콘 가로 크기 */
-  height: 28px; /* 하트 아이콘 세로 크기 */
+  width: 28px;
+  height: 28px;
 }
-
 
 .ct {
   flex: none;
@@ -812,6 +861,7 @@ nav .nav-icon {
   line-height: inherit;
   white-space: nowrap;
 }
+
 .hero {
   position: relative;
   height: 220px;
@@ -890,7 +940,6 @@ nav .nav-icon {
   min-width: 0;
 }
 
-/* Recipe detail uses grouped rows and compact action controls. */
 .recipe-detail .sec {
   padding: 10px 12px;
   margin: 14px 0 4px;
@@ -917,9 +966,6 @@ nav .nav-icon {
 .recipe-detail .stepper b {
   min-width: 56px;
 }
-
-
-
 
 .ing {
   display: flex;
@@ -1111,7 +1157,7 @@ nav .nav-icon {
   align-items: center;
   gap: 20px;
   min-height: 120px;
-  padding: 0px 25px 0px 25px;
+  padding: 0px 25px;
   margin: 16px 0;
   border: 1px solid var(--bd);
   border-radius: 20px;
@@ -1130,12 +1176,12 @@ nav .nav-icon {
 
 .mc.recipe-choice .mi {
   width: 60px;
-  height: 70px;
+  height: 50px;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 50px;
+  font-size: 45px;
   flex: none;
 }
 
@@ -1252,9 +1298,9 @@ nav .nav-icon {
   width: 100%;
   max-width: 560px;
   border-radius: 28px;
-  padding:  60px 60px 40px;
+  padding: 60px 60px 40px;
   box-shadow: 0 14px 40px rgba(45, 34, 22, 0.18);
-  max-height: 85vh;
+  max-height: 64vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -1292,7 +1338,6 @@ nav .nav-icon {
   place-items: center;
 }
 
-/* 재료 토글 버튼 (숨기기 / 펼치기) 스타일 */
 .ingredient-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -1312,29 +1357,23 @@ nav .nav-icon {
   transition: all 0.15s ease;
 }
 
-
-
 .ingredient-toggle-btn:active {
   transform: scale(0.96);
 }
 
-
-
-
 .mdl-h .download-icon { width: 32px; height: 32px; }
 .exp-subtitle { color: #80766a; font-size: 14px; line-height: 1.5; margin: 0 0 24px; }
-.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0px 5px; }
-.exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 600; font-size: 14px;  cursor: pointer; }
+.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 5px 5px; }
+.exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 600; font-size: 14px; cursor: pointer; }
 .exp-selectall.on { background: #fff; color: #272524; }
-.exp-count { color: #ff7900; font-size: 14px; font-weight: 600;}
+.exp-count { color: #ff7900; font-size: 14px; font-weight: 600; }
 .exp-list { max-height: 260px; overflow-y: auto; margin: 0px 0px 20px; }
 .exp-item:last-child { border-bottom: 0; }
-.exp-box { position: relative; width: 28px; height: 28px; flex: none; }
+.exp-box { position: relative; flex: none; }
 .exp-check { appearance: none; -webkit-appearance: none; width: 100%; height: 100%; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: block; cursor: pointer; }
 .exp-check:checked { background: #ff7900; border-color: #ff7900; }
-.exp-check-icon { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); color: #fff; display: none; pointer-events: none; }
+.exp-check-icon { position: absolute; left: 50%; top: 50%; width: 12px; height: 18px; transform: translate(-50%, -50%); color: #fff; display: none; pointer-events: none; }
 .exp-check:checked + .exp-check-icon { display: block; }
-/* 체크된 항목: 회색 + 취소선 */
 .exp-item.done .exp-name,
 .exp-item.done .exp-category { color: var(--sub); text-decoration: line-through; }
 
@@ -1350,39 +1389,39 @@ nav .nav-icon {
 }
 
 .exp-name {
-  flex: 1;                 /* 남은 공간을 이름이 모두 차지하되 */
-  min-width: 0;            /* flex 박스 밖으로 튀어나가지 않도록 강제 제한 */
-  overflow: hidden;        /* 넘치는 글자 숨김 */
-  text-overflow: ellipsis; /* 말줄임표(...) 처리 */
-  white-space: nowrap;     /* 줄바꿈 방지 */
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exp-category {
-  flex-shrink: 0;          /* 카테고리 글자가 찌그러지거나 밀려나지 않도록 고정 */
+  flex-shrink: 0;
   font-size: 14px;
   color: var(--sub);
-  margin-left: 8px;        /* 이름과 카테고리 사이 간격 확보 */
+  margin-left: 8px;
 }
-.exp-actions { display: flex; gap: 12px; margin:  0px 10px; }
+
+.exp-actions { display: flex; gap: 12px; margin: 0px 10px; }
 .exp-action { flex: 1; min-height: 50px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
 .exp-copy { background: #f1ede5; color: #2b2620; }
 .exp-share { background: #f1ede5; color: #2b2620; }
+
 @media (max-width: 520px) {
   .mdl { padding: 23px; border-radius: 24px; }
   .mdl-h b { font-size: 22px; }
-  .exp-subtitle { font-size: 14px; }
-  .exp-item { min-height: 64px; }
-  .exp-name { font-size: 17px; }
-  .exp-category { font-size: 13px; }
-  .exp-action { font-size: 15px; min-height: 50px; padding: 12px 6px; }
+  .exp-subtitle { font-size: 12px; }
+  .exp-item { min-height: 55px; }
+  .exp-name { font-size: 15px; }
+  .exp-category { font-size: 12px; }
+  .exp-action { font-size: 15px; min-height: 50px; padding: 5px 6px; }
 }
-
 
 .home-screen > h3 {
   margin: 13px 0 14px;
 }
 
-/* Scoped recipe detail styling requested for the notebook detail content. */
 .rcp{
   --card:#fff; --text:#2b2620; --sub:#80766a; --line:#ece4d8;
   --accent:#ff7a00; --accent-soft:#fff0e2; --accent-text:#fff; --tile:#f1ede5;
@@ -1399,11 +1438,7 @@ nav .nav-icon {
 .rcp .title{font-size:26px;margin:13px 100px 0px 2px;letter-spacing:-.5px}
 .rcp .metabar{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin:5px 0 8px 0}
 .rcp .metabar .stepper{align-self:flex-end}
-
-/*인분조절 바*/
-.rcp .serv-bar{display:flex;align-items:top;justify-content:space-between;padding:0;margin:4px 0 5px}
-
-
+.rcp .serv-bar{display:flex;align-items:center;justify-content:space-between;padding:0;margin:4px 0 5px}
 .rcp .meta{color:var(--sub);font-size:14px;margin:0}
 .rcp .stepper{display:flex;flex:none;align-items:center;background:var(--tile);border-radius:30px;padding:4px 5px;box-shadow:none}
 .rcp .stepper button{width:22px;height:34px;padding:0;border:0;border-radius:12px;background:none;color:var(--sub);font-size:20px;font-weight:700;cursor:pointer}
@@ -1430,7 +1465,6 @@ nav .nav-icon {
 .rcp .ingredient-list{display:grid;gap:6px;margin-bottom:13px;margin-top: 10px;}
 .rcp .ingredient-list .ing{margin:0}
 
-/* 요리 노트: 카테고리 1단 가로 슬라이드 */
 .chip-scroll {
   display: flex;
   flex-wrap: nowrap;
@@ -1444,7 +1478,6 @@ nav .nav-icon {
 .chip-scroll::-webkit-scrollbar { display: none; }
 .chip-scroll .ch { flex: none; white-space: nowrap; margin: 0; }
 
-/* 레시피 개수(왼쪽) / 삭제 버튼(오른쪽) */
 .note-meta {
   display: flex;
   align-items: center;
@@ -1464,13 +1497,12 @@ nav .nav-icon {
 }
 .note-del-btn:disabled { opacity: 0.4; cursor: default; }
 
-/* 레시피 삭제 페이지 */
 .delete-page .del-list { margin: 0 0 24px; }
 .del-confirm-btn { background: rgb(255, 123, 0); color: #fff; margin-bottom: 24px; }
 .del-confirm-btn:disabled { opacity: 0.4; cursor: default; }
 
-/* 레시피 상세: 재료와 양념 구분 */
 .rcp .ingredient-groups { display: grid; gap: 16px; margin-top: 10px; }
 .rcp .ingredient-group { min-width: 0; }
 .rcp .ingredient-group-title { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 700; }
 .rcp .ingredient-group .ingredient-list { margin: 0; }
+
