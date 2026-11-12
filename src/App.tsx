@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getPublicRecipes, savePublicRecipes, organizeRecipePhoto, extractYoutubeRecipe, askChef } from './firebase';
 
 export interface Recipe {
   id: number;
   name: string;
   cat: string;
-  min: number | string;
+  min?: number | string; // 사용 안 함 (조리시간 삭제됨)
   serv: number;
   ing: string;
   sau: string;
@@ -29,44 +29,31 @@ const EMJ = ['🥗', '🍲', '🍖', '🍜', '🍙', '🍰', '🍽️'];
 const SL: Record<string, string> = { sns: 'SNS', my: '직접 작성', photo: '사진', ai: 'AI' };
 const TS = /^([0-9]{1,2}):([0-9]{2}) +(.*)$/;
 
-const SEED_RECIPES: Recipe[] = [
-  {
-    id: 1,
-    name: '제육볶음',
-    cat: '메인 요리',
-    src: 'sns',
-    url: 'https://www.youtube.com/watch?v=rb7ff_r6G6g',
-    min: 25,
-    serv: 2,
-    ing: '돼지고기 앞다리살 600g,양파 1개,대파 1대',
-    sau: '고추장 2큰술\n간장 2큰술\n설탕 1큰술\n다진 마늘 1큰술',
-    steps: '00:30 양파와 대파를 먹기 좋게 썬다\n01:15 고추장·간장·설탕·마늘을 섞어 양념장을 만든다\n02:30 고기를 양념에 10분 재운다\n04:10 센 불에서 고기를 8분 볶는다\n06:20 양파와 대파를 넣고 3분 더 볶는다',
-    tip: '센 불에서 빠르게 볶아야 고기가 질기지 않고 육즙이 살아있어요.',
-    t: 1710000000000,
-    fav: 1,
-  },
-  {
-    id: 2,
-    name: '계란말이',
-    cat: '밑반찬',
-    src: 'my',
-    url: '',
-    min: 10,
-    serv: 2,
-    ing: '계란 4개\n당근 1/4개\n대파 1/2대',
-    sau: '소금 1꼬집\n맛술 1큰술',
-    steps: '계란을 풀고 다진 채소와 양념을 섞는다\n약불에서 얇게 부어 5분간 돌돌 만다\n식힌 뒤 예쁘게 썬다',
-    tip: '불이 너무 세면 탈 수 있으니 약불을 유지하세요.',
-    t: 1709900000000,
-    fav: 0,
-  },
-];
+// 예전 기본 예시 레시피(제육볶음·계란말이): 수정하지 않은 상태로 남아 있으면 제거한다
+const isOldSeedRecipe = (r: Recipe) =>
+  (r.id === 1 && r.name === '제육볶음') || (r.id === 2 && r.name === '계란말이');
 
 
 const LOCAL_STORAGE_KEY = 'my_recipes_proto';
 
+// 저장돼 있던 조리시간(min) 값을 모든 레시피에서 제거
+const stripMin = (list: Recipe[]): Recipe[] =>
+  list
+    .filter((r) => !isOldSeedRecipe(r))
+    .map((r) => {
+      const { min, ...rest } = r;
+      return rest as Recipe;
+    });
+
 // Helper functions matching original prototype
 const L = (s: string) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+// 재료·양념용: 줄바꿈 또는 쉼표(,)로 구분. 1,000g 같은 숫자 천단위 쉼표는 유지
+const LI = (s: string) =>
+  String(s || '')
+    .split(/\n|(?<!\d),|,(?!\d{3}(?!\d))|[，、]/)
+    .map((x) => x.trim())
+    .filter(Boolean);
 
 const splitIngredientLine = (line: string) => {
   const cleanLine = line.replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
@@ -136,9 +123,9 @@ const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
     height="23"
     viewBox="0 0 24 24"
     fill="currentColor"
-    stroke="#505050"
-strokeWidth="0.4"
-strokeLinejoin="round"
+    stroke={filled ? 'none' : '#505050'}
+    strokeWidth="0.4"
+    strokeLinejoin="round"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
     focusable="false"
@@ -228,12 +215,12 @@ export default function App() {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return stripMin(parsed);
       }
     } catch (e) {
       console.warn('LocalStorage load error:', e);
     }
-    return SEED_RECIPES;
+    return [];
   });
 
   const [cloudReady, setCloudReady] = useState(false);
@@ -275,6 +262,11 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Record<number, boolean>>({});
 
+  // 레시피 삭제(선택) 페이지 state
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteSelected, setDeleteSelected] = useState<Record<number, boolean>>({});
+  const [deleteArmed, setDeleteArmed] = useState(false); // 삭제 확인(2단계) 대기 상태
+
   // Toast
   const [toastText, setToastText] = useState<string | null>(null);
 
@@ -288,6 +280,91 @@ export default function App() {
 //재료 리스트
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
 
+  // ---------------------------------------------------------------
+  // 브라우저/폰 뒤로가기 연동: 화면 이동(탭·레시피 보기·수정·추가·내보내기)마다
+  // history 항목을 쌓고, 뒤로가기(popstate) 시 이전 화면으로 복원한다.
+  // ---------------------------------------------------------------
+  type NavSnap = { tab: string; imp: string; viewRecipeId: number | null; editing: boolean; exportOpen: boolean; deleteMode: boolean };
+  const navKeyOf = (n: NavSnap) => `${n.tab}|${n.imp}|${n.viewRecipeId ?? ''}|${n.editing ? 1 : 0}|${n.exportOpen ? 1 : 0}|${n.deleteMode ? 1 : 0}`;
+  const lastNavRef = useRef<{ key: string; idx: number; snap: NavSnap; prev?: NavSnap } | null>(null);
+  const isEditing = !!editingRecipe;
+
+  useEffect(() => {
+    const snap: NavSnap = { tab, imp, viewRecipeId, editing: isEditing, exportOpen, deleteMode };
+    const key = navKeyOf(snap);
+    const last = lastNavRef.current;
+    if (!last) {
+      window.history.replaceState({ ...snap, idx: 0 }, '');
+      lastNavRef.current = { key, idx: 0, snap };
+      return;
+    }
+    if (last.key === key) return;
+    const idx = last.idx + 1;
+    window.history.pushState({ ...snap, idx, prev: last.snap }, '');
+    lastNavRef.current = { key, idx, snap, prev: last.snap };
+  }, [tab, imp, viewRecipeId, isEditing, exportOpen, deleteMode]);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const st = e.state;
+      if (!st || typeof st.idx !== 'number') return;
+      // 수정 화면(editing)은 객체 상태라 복원할 수 없으므로 항상 닫는다.
+      const snap: NavSnap = { tab: st.tab, imp: st.imp, viewRecipeId: st.viewRecipeId ?? null, editing: false, exportOpen: !!st.exportOpen, deleteMode: !!st.deleteMode };
+      lastNavRef.current = { key: navKeyOf(snap), idx: st.idx, snap, prev: st.prev };
+      setTab(snap.tab as any);
+      setImp(snap.imp as any);
+      setViewRecipeId(snap.viewRecipeId);
+      setEditingRecipe(null);
+      setExportOpen(snap.exportOpen);
+      setDeleteMode(snap.deleteMode);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // 앱 안의 뒤로가기 버튼: 이동 기록이 있으면 history.back(), 없으면 fallback 실행
+  const goBack = (fallback: () => void) => {
+    if ((lastNavRef.current?.idx ?? 0) > 0) window.history.back();
+    else fallback();
+  };
+  const closeExport = () => goBack(() => setExportOpen(false));
+
+  // 삭제 페이지 열기/선택/삭제
+  const openDeletePage = () => {
+    setDeleteSelected({});
+    setDeleteArmed(false);
+    setDeleteMode(true);
+  };
+  const toggleDeleteItem = (id: number, checked: boolean) => {
+    setDeleteArmed(false);
+    setDeleteSelected((prev) => ({ ...prev, [id]: checked }));
+  };
+  const toggleAllDelete = () => {
+    setDeleteArmed(false);
+    const all = recipes.length > 0 && recipes.every((r) => deleteSelected[r.id]);
+    const next: Record<number, boolean> = {};
+    recipes.forEach((r) => {
+      next[r.id] = !all;
+    });
+    setDeleteSelected(next);
+  };
+  const deleteSelectedRecipes = () => {
+    const ids = recipes.filter((r) => deleteSelected[r.id]).map((r) => r.id);
+    if (ids.length === 0) {
+      showToast('삭제할 레시피를 선택해 주세요.');
+      return;
+    }
+    if (!deleteArmed) {
+      setDeleteArmed(true); // 한 번 더 눌러야 실제로 삭제
+      return;
+    }
+    setRecipes((prev) => prev.filter((r) => !deleteSelected[r.id]));
+    setDeleteSelected({});
+    setDeleteArmed(false);
+    goBack(() => setDeleteMode(false));
+    showToast(`${ids.length}개의 레시피를 삭제했어요.`);
+  };
+
   // Load the public shared recipe list on open; seed an empty collection from local recipes.
   useEffect(() => {
     let active = true;
@@ -295,7 +372,7 @@ export default function App() {
       try {
         const cloudRecipes = await getPublicRecipes(recipes);
         if (!active) return;
-        if (cloudRecipes.length) setRecipes(cloudRecipes);
+        if (cloudRecipes.length) setRecipes(stripMin(cloudRecipes));
         else await savePublicRecipes(recipes);
         if (active) setCloudReady(true);
       } catch (error) {
@@ -362,7 +439,7 @@ export default function App() {
     }
     setRecipes((prev) => prev.filter((r) => r.id !== id));
     setDeleteConfirmId(null);
-    setViewRecipeId(null);
+    goBack(() => setViewRecipeId(null));
     showToast('레시피를 삭제했습니다.');
   };
 
@@ -396,7 +473,6 @@ export default function App() {
         id: Date.now(),
         name: extracted.name || '유튜브 요리 레시피',
         cat: CATS.includes(extracted.cat) ? extracted.cat : '메인 요리',
-        min: extracted.min || 20,
         serv: extracted.serv || 2,
         ing: Array.isArray(extracted.ing) ? extracted.ing.join('\n') : extracted.ing || '재료 정보',
         sau: Array.isArray(extracted.sau) ? extracted.sau.join('\n') : extracted.sau || '',
@@ -423,7 +499,8 @@ export default function App() {
     } catch (err: any) {
       console.error('SNS extract error:', err);
       setSnsLoading(false);
-      setSnsMessage('영상 추출 중 일시적인 오류가 발생했습니다. 수기 편집 화면으로 전환합니다.');
+      setSnsMessage('');
+      setSnsUrl('');
 
       // Fallback: open edit screen with partial info
       const fallbackYtId = extractYtId(targetUrl);
@@ -431,7 +508,6 @@ export default function App() {
         id: 0,
         name: '',
         cat: '기타',
-        min: 20,
         serv: 2,
         ing: '',
         sau: '',
@@ -457,7 +533,6 @@ export default function App() {
       id: Date.now(),
       name: draftTitle.trim() || firstLine.slice(0, 20),
       cat: '기타',
-      min: 20,
       serv: 2,
       ing: draftIngredients,
       sau: draftSeasonings,
@@ -494,10 +569,9 @@ export default function App() {
       id: editingRecipe?.id || Date.now(),
       name,
       cat: String(formData.get('cat') || '기타'),
-      min: Number(formData.get('min')) || 0,
       serv: Number(formData.get('serv')) || 2,
-      ing: String(formData.get('ing') || ''),
-      sau: String(formData.get('sau') || ''),
+      ing: LI(String(formData.get('ing') || '')).join('\n'),
+      sau: '',
       steps: String(formData.get('steps') || ''),
       tip: String(formData.get('tip') || ''),
       url: String(formData.get('url') || '').trim(),
@@ -515,8 +589,15 @@ export default function App() {
       return [savedRecipe, ...prev];
     });
 
-    setEditingRecipe(null);
-    setViewRecipeId(savedRecipe.id);
+    const prevNav = lastNavRef.current?.prev;
+    if (prevNav && !prevNav.editing && prevNav.viewRecipeId === savedRecipe.id) {
+      // 레시피 상세에서 수정 → 저장: 수정 화면 기록을 닫고 상세로 돌아간다
+      setEditingRecipe(null);
+      window.history.back();
+    } else {
+      setEditingRecipe(null);
+      setViewRecipeId(savedRecipe.id);
+    }
     showToast('레시피를 저장했습니다.');
   };
 
@@ -610,7 +691,7 @@ export default function App() {
     return selected
       .map(
         (r) =>
-          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n조리시간: ${r.min || '-'}분\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념]\n${r.sau || '-'}\n\n[조리순서]\n${r.steps}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
+          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념]\n${r.sau || '-'}\n\n[조리순서]\n${r.steps}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
       )
       .join('\n\n');
   };
@@ -625,34 +706,35 @@ export default function App() {
       .writeText(text)
       .then(() => {
         showToast('클립보드에 복사되었어요! 메모장에 붙여넣으세요.');
-        setExportOpen(false);
+        closeExport();
       })
       .catch(() => {
         showToast('복사에 실패했습니다.');
       });
   };
 
-  const shareToMemo = async () => {
+  // 선택한 레시피를 텍스트(.txt) 파일로 저장
+  const saveAsTextFile = () => {
     const text = getSelectedRecipesText();
     if (!text) {
       showToast('내보낼 레시피를 선택해 주세요.');
       return;
     }
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: '내 레시피 모음', text });
-        setExportOpen(false);
-        showToast('삼성노트에서 저장을 완료해 주세요.');
-      } catch (e: any) {
-        if (e.name === 'AbortError') {
-          showToast('공유가 취소됐어요. 복사하기를 이용할 수 있어요.');
-        } else {
-          copyRecipes();
-        }
-      }
-    } else {
-      copyRecipes();
-    }
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fileName = `내_레시피_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.txt`;
+    // BOM(\uFEFF)을 붙여 윈도우 메모장에서도 한글이 깨지지 않게 저장
+    const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    closeExport();
+    showToast('텍스트 파일로 저장했어요.');
   };
 
   const toggleAllExport = () => {
@@ -678,6 +760,8 @@ export default function App() {
   const favoriteRecipes = recipes.filter((r) => r.fav);
 
   const currentViewingRecipe = recipes.find((r) => r.id === viewRecipeId);
+  const deleteCount = recipes.filter((r) => deleteSelected[r.id]).length;
+  const allDeleteSelected = recipes.length > 0 && recipes.every((r) => deleteSelected[r.id]);
 
   // Render thumbnail
   const renderThumbnail = (r: Recipe, className = 'ph') => {
@@ -719,7 +803,7 @@ export default function App() {
   return (
     <div id="app">
       {/* 1. Header (when not in edit mode or detail view) */}
-      {!editingRecipe && !viewRecipeId && (
+      {!editingRecipe && !viewRecipeId && !deleteMode && (
         <div className="top">
           <b className="lg">MY RECIPE</b>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -751,7 +835,7 @@ export default function App() {
               <button
                 type="button"
                 className="ic"
-                onClick={() => setEditingRecipe(null)}
+                onClick={() => goBack(() => setEditingRecipe(null))}
                 title="수정 취소"
               >
                 <BackIcon />
@@ -803,9 +887,6 @@ export default function App() {
                 ))}
               </select>
 
-              <label className="fl">조리 시간 (분)</label>
-              <input name="min" type="number" defaultValue={editingRecipe.min || ''} placeholder="예: 25" />
-
               <label className="fl">기준 인분 (재료 분량이 몇 인분 기준인지)</label>
               <input name="serv" type="number" min={1} defaultValue={editingRecipe.serv || 2} />
 
@@ -813,9 +894,9 @@ export default function App() {
             <label className="fl" htmlFor="ingredients-combined">재료 및 양념</label>
             <textarea
               id="ingredients-combined"
-              rows={5}
-              value={draftIngredients} // 혹은 통합된 state 변수명
-              onChange={(e) => setDraftIngredients(e.target.value)}
+              name="ing"
+              rows={7}
+              defaultValue={[...LI(editingRecipe.ing || ''), ...LI(editingRecipe.sau || '')].join('\n')}
               placeholder="예: 돼지고기 300g, 양파 1/2개, 간장 2큰술, 고춧가루 1큰술"
             />
               <label className="fl">조리 순서 (한 줄에 한 단계 · 앞에 02:10 처럼 시간 표기 가능)</label>
@@ -844,7 +925,7 @@ export default function App() {
                 type="button"
                 className="ic"
                
-                onClick={() => setViewRecipeId(null)}
+                onClick={() => goBack(() => setViewRecipeId(null))}
                 title="뒤로가기"
               >
                 <BackIcon />
@@ -855,7 +936,7 @@ export default function App() {
                 <button
                   type="button"
                   className="ic"
-                  style={{ color: currentViewingRecipe.fav ? 'var(--or)' : 'var(--sub)', background: 'var(--cd)' }}
+                  style={{ color: currentViewingRecipe.fav ? 'var(--or)' : '#80766a', background: 'var(--cd)' }}
                   onClick={(e) => toggleFav(currentViewingRecipe.id, e)}
                   title="즐겨찾기"
                 >
@@ -982,41 +1063,35 @@ export default function App() {
             </div>
 
               {/* 3. 재료 영역 (숨기기/펼치기 토글 기능 + CSS 버튼 적용) */}
-              <h3 
-              
-                className="ingredient-heading" 
-                onClick={() => setIsIngredientsOpen((prev) => !prev)}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', marginTop: '25px' }}
-              >
-                
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span>재료</span>
-                  
-                  <span className="base-servings">
-                    기준 {currentViewingRecipe.serv || 2}인분
-                    {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
-                  </span>
-                  
-                </div>
-                {isIngredientsOpen && (
-  <div className="serv-bar">
-    <span></span>
-    <div className="stepper">
-      <button onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
-      <span id="sgn">{servings}인분</span>
-      <button onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
-    </div>
-  </div>
-)}
-                <button type="button" className="ingredient-toggle-btn">
+              <div className="ingredient-head">
+                <h3 className="ingredient-heading">재료</h3>
+                <button
+                  type="button"
+                  className="ingredient-toggle-btn"
+                  onClick={() => setIsIngredientsOpen((prev) => !prev)}
+                >
                   {isIngredientsOpen ? '숨기기 ▴' : '펼치기 ▾'}
                 </button>
-              </h3>
+              </div>
+
+              <div className="serv-bar">
+                <span className="base-servings">
+                  기준 {currentViewingRecipe.serv || 2}인분
+                  {servings !== (currentViewingRecipe.serv || 2) && ` · 현재 ×${+(servings / (currentViewingRecipe.serv || 2)).toFixed(2)}`}
+                </span>
+                {isIngredientsOpen && (
+                  <div className="stepper">
+                    <button type="button" onClick={() => setServings((n) => Math.max(1, n - 1))}>−</button>
+                    <span id="sgn">{servings}인분</span>
+                    <button type="button" onClick={() => setServings((n) => Math.min(20, n + 1))}>+</button>
+                  </div>
+                )}
+              </div>
 
               {isIngredientsOpen && (
                 <div className="ingredient-list">
-                  {[...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].length > 0
-                    ? [...L(currentViewingRecipe.ing), ...L(currentViewingRecipe.sau)].map((line, idx) => {
+                  {[...LI(currentViewingRecipe.ing), ...LI(currentViewingRecipe.sau)].length > 0
+                    ? [...LI(currentViewingRecipe.ing), ...LI(currentViewingRecipe.sau)].map((line, idx) => {
                         const ingredient = splitIngredientLine(line);
                         const factor = servings / (currentViewingRecipe.serv || 2);
                         const amount = scaleIngredientAmount(ingredient.amount, factor);
@@ -1113,6 +1188,70 @@ export default function App() {
             )}
             </div>
           </div>
+        ) : deleteMode ? (
+          /* =========================================================
+              SCREEN: RECIPE DELETE (선택 삭제)
+             ========================================================= */
+          <div className="delete-page">
+            <div style={{ marginBottom: '16px', marginTop: '12px' }}>
+              <button
+                type="button"
+                className="ic"
+                onClick={() => goBack(() => setDeleteMode(false))}
+                title="뒤로가기"
+              >
+                <BackIcon />
+              </button>
+            </div>
+            <h2>레시피 삭제</h2>
+            <p className="s exp-subtitle">삭제할 레시피를 선택해 주세요.</p>
+
+            <div className="exp-selectbar">
+              <button
+                type="button"
+                className={`exp-selectall${allDeleteSelected ? ' on' : ''}`}
+                onClick={toggleAllDelete}
+              >
+                {allDeleteSelected ? '전체 해제' : '전체 선택'}
+              </button>
+              <span className="exp-count">{deleteCount}개 선택</span>
+            </div>
+
+            <div className="del-list">
+              {recipes.length > 0 ? (
+                recipes.map((r) => (
+                  <label key={r.id} className={`exp-item${deleteSelected[r.id] ? ' done' : ''}`}>
+                    <span className="exp-box">
+                      <input
+                        className="exp-check"
+                        type="checkbox"
+                        checked={!!deleteSelected[r.id]}
+                        onChange={(e) => toggleDeleteItem(r.id, e.target.checked)}
+                      />
+                      <svg className="exp-check-icon" width="20px" height="20px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                        <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
+                      </svg>
+                    </span>
+                    <span className="exp-name">{r.name}</span>
+                    <span className="exp-category">{r.cat}</span>
+                  </label>
+                ))
+              ) : (
+                <p className="s" style={{ textAlign: 'center', marginTop: '30px' }}>
+                  삭제할 레시피가 없어요.
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="bt del-confirm-btn"
+              disabled={deleteCount === 0}
+              onClick={deleteSelectedRecipes}
+            >
+              {deleteArmed ? `${deleteCount}개 삭제 확인 (한 번 더 누르세요)` : `${deleteCount}개 삭제`}
+            </button>
+          </div>
         ) : tab === 'home' ? (
           /* =========================================================
               SCREEN 4: HOME TAB
@@ -1148,6 +1287,8 @@ export default function App() {
               className="bt"
               style={{ margin: '14px 0px 32px 0px' }}
               onClick={() => {
+                setSnsUrl('');
+                setSnsMessage('');
                 setTab('imp');
                 setImp('sns');
               }}
@@ -1207,7 +1348,7 @@ export default function App() {
                       <span
                         className="hr"
                         onClick={(e) => toggleFav(r.id, e)}
-                        style={{ color: r.fav ? 'var(--or)' : 'var(--sub)' }}
+                        style={{ color: r.fav ? 'var(--or)' : '#80766a' }}
                       >
                         <HeartIcon filled={!!r.fav} />
                       </span>
@@ -1242,7 +1383,7 @@ export default function App() {
                       <span
                         className="hr"
                         onClick={(e) => toggleFav(r.id, e)}
-                        style={{ color: r.fav ? 'var(--or)' : 'var(--sub)' }}
+                        style={{ color: r.fav ? 'var(--or)' : '#80766a' }}
                       >
                         <HeartIcon filled={!!r.fav} />
                       </span>
@@ -1263,7 +1404,7 @@ export default function App() {
               SCREEN 5: MY RECIPE NOTES TAB
              ========================================================= */
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '18px 0 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '5px 0 15px' }}>
               <h2 style={{ margin: 0 }}>요리 노트</h2>
               <button
                 type="button"
@@ -1271,7 +1412,7 @@ export default function App() {
                 aria-label={selectedFilter === '즐겨찾기' ? '전체 레시피 보기' : '즐겨찾기만 보기'}
                 aria-pressed={selectedFilter === '즐겨찾기'}
                 onClick={() => setSelectedFilter((curr) => (curr === '즐겨찾기' ? '' : '즐겨찾기'))}
-                style={{ color: selectedFilter === '즐겨찾기' ? 'var(--or)' : 'var(--sub)', fontSize: '24px' }}
+                style={{ color: selectedFilter === '즐겨찾기' ? 'var(--or)' : '#80766a', fontSize: '24px' }}
               >
                 <HeartIcon filled={selectedFilter === '즐겨찾기'} />
               </button>
@@ -1281,8 +1422,8 @@ export default function App() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {/* Category Chips */}
-            <div style={{ margin: '20px 0 20px' }}>
+            {/* Category Chips: 1단 가로 슬라이드 */}
+            <div className="chip-scroll">
               <button
                 className={`ch ${selectedCat === '' ? 'on' : ''}`}
                 onClick={() => setSelectedCat('')}
@@ -1300,6 +1441,18 @@ export default function App() {
               ))}
             </div>
 
+            {/* 레시피 개수(왼쪽) · 삭제 버튼(오른쪽) */}
+            <div className="note-meta">
+              <span className="note-count">레시피 {filteredRecipes.length}개</span>
+              <button
+                type="button"
+                className="note-del-btn"
+                onClick={openDeletePage}
+                disabled={recipes.length === 0}
+              >
+                삭제
+              </button>
+            </div>
 
             {/* Recipe List Cards */}
             <div className="recipe-note-list">
@@ -1381,7 +1534,11 @@ export default function App() {
         type="button"
         className="ic"
        
-        onClick={() => setImp('')}
+        onClick={() => {
+          setSnsUrl('');
+          setSnsMessage('');
+          goBack(() => setImp(''));
+        }}
         title="뒤로가기"
       >
         <BackIcon />
@@ -1439,7 +1596,7 @@ export default function App() {
         type="button"
         className="ic"
        
-        onClick={() => setImp('')}
+        onClick={() => goBack(() => setImp(''))}
         title="뒤로가기"
       >
         <BackIcon />
@@ -1523,7 +1680,7 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        onClick={() => setImp('')}
+        onClick={() => goBack(() => setImp(''))}
         title="뒤로가기"
       >
         <BackIcon />
@@ -1588,7 +1745,7 @@ export default function App() {
       <button
         type="button"
         className="ic"
-        onClick={() => setImp('')}
+        onClick={() => goBack(() => setImp(''))}
         title="뒤로가기"
       >
         <BackIcon />
@@ -1661,7 +1818,7 @@ export default function App() {
       </main>
 
       {/* Floating Bottom Navigation */}
-      {!editingRecipe && (
+      {!editingRecipe && !deleteMode && (
         <nav>
           {[
             ['home', './nav-icons/home.png', '홈'],
@@ -1678,9 +1835,17 @@ export default function App() {
               setTab(k as any);
               setImp('');
               setSearchQuery(''); // 다른 탭 클릭 시 검색어 초기화
+              setSelectedCat(''); // 요리 노트 카테고리는 항상 '전체'로 초기화
+              setDeleteMode(false);
+              setSnsUrl('');
+              setSnsMessage('');
             }}
             >
-              <img className="nav-icon" src={icon} alt="" aria-hidden="true" />
+              <span
+                className="nav-icon"
+                aria-hidden="true"
+                style={{ WebkitMaskImage: `url(${icon})`, maskImage: `url(${icon})` }}
+              />
               {title}
             </button>
           ))}
@@ -1692,23 +1857,23 @@ export default function App() {
         <div
           className="mdl-bg"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setExportOpen(false);
+            if (e.target === e.currentTarget) closeExport();
           }}
         >
           <div className="mdl">
             <div className="mdl-h">
               <b> 레시피 내보내기</b>
-              <button className="mdl-close" onClick={() => setExportOpen(false)}>
+              <button className="mdl-close" onClick={() => closeExport()}>
                 ✕
               </button>
             </div>
             <p className="s exp-subtitle">
-              내보낼 레시피를 고른 뒤, 공유 창에서 Samsung Notes를 선택해 저장하세요.
+              내보낼 레시피를 고른 뒤, 텍스트 파일(.txt)로 저장하거나 복사하세요.
             </p>
 
             <div className="exp-selectbar">
               <button
-                className="exp-selectall"
+                className={`exp-selectall${recipes.length > 0 && recipes.every((r) => exportSelected[r.id]) ? ' on' : ''}`}
                 onClick={toggleAllExport}
               >
                 {recipes.length > 0 && recipes.every((r) => exportSelected[r.id])
@@ -1720,16 +1885,21 @@ export default function App() {
 
             <div className="exp-list">
               {recipes.map((r) => (
-                <label key={r.id} className="exp-item">
-                  <input
-                    className="exp-check"
-                    type="checkbox"
-                    checked={!!exportSelected[r.id]}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setExportSelected((prev) => ({ ...prev, [r.id]: checked }));
-                    }}
-                  />
+                <label key={r.id} className={`exp-item${exportSelected[r.id] ? ' done' : ''}`}>
+                  <span className="exp-box">
+                    <input
+                      className="exp-check"
+                      type="checkbox"
+                      checked={!!exportSelected[r.id]}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setExportSelected((prev) => ({ ...prev, [r.id]: checked }));
+                      }}
+                    />
+                    <svg className="exp-check-icon" width="20px" height="20px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                      <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" />
+                    </svg>
+                  </span>
                   <span className="exp-name">{r.name}</span>
                   <span className="exp-category">{r.cat}</span>
                 </label>
@@ -1745,9 +1915,9 @@ export default function App() {
               </button>
               <button
                 className="exp-action exp-share"
-                onClick={shareToMemo}
+                onClick={saveAsTextFile}
               >
-                 삼성노트로 공유
+                 텍스트 파일로 저장
               </button>
             </div>
           </div>

@@ -92,7 +92,7 @@ main {
 h2 {
   font-size: 28px;
   font-weight: 800;
-  margin: 18px 0 23px;
+  margin: 10px 0 10px;
 }
 
 h3 {
@@ -304,7 +304,7 @@ textarea {
 .row {
   display: flex;
   gap: 10px;
-  margin: 12px 0 40px 0;
+  margin: 18px 0 25px 0;
   align-items: center;
 }
 
@@ -334,7 +334,7 @@ nav button {
   background: none;
   padding: 8px 0;
   font-size: 10px;
-  color: var(--sub);
+  color: #80766a;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -352,10 +352,15 @@ nav .nav-icon {
   display: block;
   width: 25px;
   height: 25px;
-  object-fit: contain;
   margin-bottom: 7px;
-  /* 원본 이미지를 회색(#737373)으로 변환하는 CSS 필터 */
-  filter: brightness(0) saturate(100%) invert(40%) sepia(0%) saturate(0%) hue-rotate(203deg) brightness(94%) contrast(88%);
+  /* 아이콘 이미지를 마스크로 쓰고 글자색(currentColor)으로 채워 텍스트와 항상 같은 색 */
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
 }
 
 .heart-icon {
@@ -498,16 +503,16 @@ nav .nav-icon {
 }
 
 .home-screen .pc {
-  width: 170px;
+  width: 160px;
 }
 
 .home-screen .pc .ph {
-  height: 140px;
+  height: 120px;
   background: #f1ede5;
 }
 
 .home-screen .pc .nm {
-  min-height: 80px;
+  min-height: 70px;
   padding: 12px 12px 16px;
 }
 
@@ -533,7 +538,7 @@ nav .nav-icon {
   align-items: center;
   justify-content: center;
   font-size: 58px;
-  background: var(--sub);
+  background: #f1ede5;
   overflow: hidden;
 }
 
@@ -543,6 +548,18 @@ nav .nav-icon {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 58px;
+  line-height: 1;
+  text-align: center;
+}
+
+.ph .fallback-emoji {
+  display: none;
+  line-height: 1;
+  text-align: center;
 }
 
 .pill {
@@ -1280,7 +1297,14 @@ nav .nav-icon {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  height: auto;
+  flex: none;
+  border: 0;
+  background: none;
+  line-height: 1.2;
   color: var(--sub);
   font-size: 13px;
   font-weight: 600;
@@ -1299,14 +1323,20 @@ nav .nav-icon {
 
 .mdl-h .download-icon { width: 32px; height: 32px; }
 .exp-subtitle { color: #80766a; font-size: 16px; line-height: 1.5; margin: 0 0 24px; }
-.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0 0 22px; }
-.exp-selectall { border: 0; border-radius: 999px;  border: 1px solid #ff7900; color: #ff7900; font-weight: 500; font-size: 15px; padding: 9px 16px; cursor: pointer; }
-.exp-count { color: #80766a; font-size: 15px; }
+.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 0px 12px; }
+.exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 500; font-size: 13px;  cursor: pointer; }
+.exp-selectall.on { background: #fff; color: #272524; }
+.exp-count { color: #ff7900; font-size: 13px; }
 .exp-list { max-height: 260px; overflow-y: auto; margin: 0px 15px 30px; }
 .exp-item:last-child { border-bottom: 0; }
-.exp-check { appearance: none; width: 28px; height: 28px; flex: none; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: grid; place-items: center; cursor: pointer; }
+.exp-box { position: relative; width: 28px; height: 28px; flex: none; }
+.exp-check { appearance: none; -webkit-appearance: none; width: 100%; height: 100%; margin: 0; border: 1px solid #e8dfd3; border-radius: 12px; background: #fff; display: block; cursor: pointer; }
 .exp-check:checked { background: #ff7900; border-color: #ff7900; }
-.exp-check:checked::after { content: '✓'; font-size: 13px; line-height: 0; color: #fff; font-weight: 700; }
+.exp-check-icon { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); color: #fff; display: none; pointer-events: none; }
+.exp-check:checked + .exp-check-icon { display: block; }
+/* 체크된 항목: 회색 + 취소선 */
+.exp-item.done .exp-name,
+.exp-item.done .exp-category { color: var(--sub); text-decoration: line-through; }
 
 .exp-item {
   display: flex;
@@ -1333,10 +1363,10 @@ nav .nav-icon {
   color: var(--sub);
   margin-left: 8px;        /* 이름과 카테고리 사이 간격 확보 */
 }
-.exp-actions { display: flex; gap: 12px; margin:  0px 15px; }
-.exp-action { flex: 1; min-height: 56px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
+.exp-actions { display: flex; gap: 12px; margin:  0px 10px; }
+.exp-action { flex: 1; min-height: 50px; padding: 12px; border: 0; border-radius: 999px; font-size: 17px; font-weight: 800; cursor: pointer; }
 .exp-copy { background: #f1ede5; color: #2b2620; }
-.exp-share { background: #ff7900; color: #fff; }
+.exp-share { background: #f1ede5; color: #2b2620; }
 @media (max-width: 520px) {
   .mdl { padding: 20px; border-radius: 24px; }
   .mdl-h b { font-size: 22px; }
@@ -1344,7 +1374,7 @@ nav .nav-icon {
   .exp-item { min-height: 64px; }
   .exp-name { font-size: 17px; }
   .exp-category { font-size: 13px; }
-  .exp-action { font-size: 15px; min-height: 54px; padding: 10px 6px; }
+  .exp-action { font-size: 15px; min-height: 50px; padding: 12px 6px; }
 }
 
 
@@ -1371,7 +1401,7 @@ nav .nav-icon {
 .rcp .metabar .stepper{align-self:flex-end}
 
 /*인분조절 바*/
-.rcp .serv-bar{display:flex;align-items:center;justify-content:space-between; padding:5px 0px 0px 10px;margin:0 0 5px}
+.rcp .serv-bar{display:flex;align-items:top;justify-content:space-between;padding:0;margin:4px 0 5px}
 
 
 .rcp .meta{color:var(--sub);font-size:14px;margin:0}
@@ -1394,7 +1424,47 @@ nav .nav-icon {
 .rcp .chip{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;text-decoration:none;margin-bottom:4px}
 .rcp a.chip{background:var(--accent-soft);color:var(--accent)}
 .rcp .tip{background:var(--card)}
-.rcp .ingredient-heading{display:flex;align-items:baseline;gap:10px}
+.rcp .ingredient-head{display:flex;align-items:center;justify-content:space-between;margin-top:25px}
+.rcp .ingredient-head .ingredient-heading{margin:0}
 .rcp .base-servings{font-size:13px;font-weight:500;color:var(--sub)}
 .rcp .ingredient-list{display:grid;gap:6px;margin-bottom:13px;margin-top: 10px;}
 .rcp .ingredient-list .ing{margin:0}
+
+/* 요리 노트: 카테고리 1단 가로 슬라이드 */
+.chip-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 18px 0 12px;
+  padding: 2px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.chip-scroll::-webkit-scrollbar { display: none; }
+.chip-scroll .ch { flex: none; white-space: nowrap; margin: 0; }
+
+/* 레시피 개수(왼쪽) / 삭제 버튼(오른쪽) */
+.note-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 2px 4px;
+}
+.note-count { font-size: 14px; color: var(--sub); }
+.note-del-btn {
+  border: 0;
+  background: none;
+  padding: 4px 0 4px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sub);
+  cursor: pointer;
+}
+.note-del-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* 레시피 삭제 페이지 */
+.delete-page .del-list { margin: 0 0 24px; }
+.del-confirm-btn { background: rgb(255, 123, 0); color: #fff; margin-bottom: 24px; }
+.del-confirm-btn:disabled { opacity: 0.4; cursor: default; }
