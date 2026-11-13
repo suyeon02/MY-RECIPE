@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { getPublicRecipes, savePublicRecipes, organizeRecipePhoto, extractYoutubeRecipe, askChef } from './firebase';
 
 export interface Recipe {
@@ -42,6 +42,34 @@ const ZOOM_MIN = 70;
 const ZOOM_MAX = 150;
 const ZOOM_STEP = 10;
 
+// ── 새로고침 복원 ──────────────────────────────────────────
+// 브라우저는 새로고침해도 현재 history 항목의 state를 그대로 보관한다.
+// 화면 이동 때 거기에 현재 화면(탭·레시피·필터)을 적어 두었다가, 다시 열릴 때 읽어서 그 화면으로 돌아간다.
+const readRestoredNav = (): any | null => {
+  try {
+    const st = window.history.state;
+    if (st && typeof st.idx === 'number' && typeof st.tab === 'string') return st;
+  } catch {
+    /* 읽을 수 없으면 홈에서 시작 */
+  }
+  return null;
+};
+const RESTORED_NAV = readRestoredNav();
+
+// 스크롤 위치는 직접 관리한다: 화면을 이동하면 맨 위, 새로고침하면 직전 위치.
+const SCROLL_KEY = 'my_recipes_scroll';
+try {
+  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+} catch {
+  /* 무시 */
+}
+const scrollToTop = () => {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  document.querySelector('main')?.scrollTo?.(0, 0);
+};
+
 // 저장돼 있던 조리시간(min) 값을 모든 레시피에서 제거
 const stripMin = (list: Recipe[]): Recipe[] =>
   list
@@ -53,6 +81,22 @@ const stripMin = (list: Recipe[]): Recipe[] =>
 
 // Helper functions matching original prototype
 const L = (s: string) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+// 내보내기용 조리 순서: 한 줄을 한 단계로 보고 "1. …  2. …" 로 번호를 새로 매긴다.
+// 입력할 때 이미 붙인 번호(1. / 2) / ① / 3단계)는 떼고 다시 매기므로 번호가 겹치거나 틀어지지 않는다.
+// 영상 시간(예: "1:30 양파를 볶는다")은 "양파를 볶는다 (영상 1:30)" 로 풀어 쓴다.
+const formatStepsNumbered = (steps: string) => {
+  const lines = L(steps);
+  if (lines.length === 0) return '-';
+  return lines
+    .map((line, idx) => {
+      const body = line.replace(/^\s*(?:\d+\s*[.)]|[①-⑳]|\d+\s*단계\s*[:.]?)\s*/, '');
+      const t = body.match(TS);
+      const text = t ? `${t[3]} (영상 ${Number(t[1])}:${t[2]})` : body;
+      return `${idx + 1}. ${text}`;
+    })
+    .join('\n');
+};
 
 // 재료·양념용: 줄바꿈 또는 쉼표(,)로 구분. 1,000g 같은 숫자 천단위 쉼표는 유지
 const LI = (s: string) =>
@@ -70,20 +114,57 @@ const normalizeHalf = (s: string) =>
     .replace(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*과\\s*반\\s*(${HALF_UNITS})`, 'g'), (_m, n, u) => `${+n + 0.5}${u}`)
     .replace(new RegExp(`(^|\\s)반\\s*(?=(?:${HALF_UNITS}))`, 'g'), (_m, pre) => `${pre}0.5`);
 
+// 한글로 쓴 개수를 숫자로 바꾼다: "한 개"·"두개"·"고기한근" → 1개·2개·고기1근, "하나"·"둘" → 1개·2개
+// (단위가 바로 붙은 경우만 바꾸므로 두부·한우·열무 같은 이름은 그대로. 네모·세모처럼 띄어쓰기 없는 '모'도 건드리지 않는다)
+const KO_NUM: Record<string, number> = {
+  한: 1, 두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10,
+  열한: 11, 열두: 12, 열세: 13, 열네: 14, 열다섯: 15, 열여섯: 16, 열일곱: 17, 열여덟: 18, 열아홉: 19, 스무: 20, 스물: 20,
+};
+const KO_NUM_RE = Object.keys(KO_NUM).sort((a, b) => b.length - a.length).join('|');
+const KO_SINGLE: Record<string, number> = { 하나: 1, 둘: 2, 셋: 3, 넷: 4 };
+const COUNT_UNITS = `${HALF_UNITS}|잔|움큼|방울|뿌리|송이|줄기|팩|대|토막|덩어리`;
+const normalizeKoreanCount = (s: string) =>
+  s
+    .replace(new RegExp(`(${KO_NUM_RE})(\\s*)(${COUNT_UNITS})(?=반(?![가-힣])|(?![가-힣]))`, 'g'), (m, w: string, sp: string, u: string) =>
+      (w === '네' || w === '세') && u === '모' && !sp ? m : `${KO_NUM[w]}${u}`
+    )
+    .replace(/(^|\s)(하나|둘|셋|넷)(?![가-힣])/g, (_m, pre: string, w: string) => `${pre}${KO_SINGLE[w]}개`);
+
+// 단위 없이 숫자만 적은 경우("양파1", "마늘 4")의 단위를 재료 이름으로 짐작한다.
+//   양념·액체류 → 큰술 / 세는 재료 → 개·쪽·대·모·마리·장 / 모르는 재료 → 숫자만 표시(단위를 지어내지 않는다)
+const SEASONING_RE = /간장|된장|고추장|쌈장|막장|춘장|소금|설탕|후추|참기름|들기름|식용유|기름|식초|맛술|미림|청주|소주|올리고당|물엿|꿀|조청|케첩|케찹|마요네즈|머스타드|겨자|액젓|소스|가루|다진|깨|즙|시럽|버터|연유/;
+const DEFAULT_COUNT_UNITS: [RegExp, string][] = [
+  [/마늘/, '쪽'],
+  [/대파/, '대'],
+  [/두부/, '모'],
+  [/팽이/, '봉'],
+  [/새우|오징어/, '마리'],
+  [/^김$|어묵|식빵|슬라이스|치즈|만두피|라이스페이퍼|또띠아/, '장'],
+  [/양파|감자|고구마|당근|계란|달걀|버섯|표고|오이|호박|가지|토마토|파프리카|피망|고추|레몬|라임|사과|^배$|옥수수|양배추|^무$|브로콜리|아보카도|바나나/, '개'],
+];
+const withDefaultUnit = (name: string, amount: string) => {
+  if (!/^(약\s*)?[\d½¼¾./~-]+$/.test(amount)) return amount; // 이미 단위가 있으면 그대로
+  if (SEASONING_RE.test(name)) return `${amount}큰술`;
+  const hit = DEFAULT_COUNT_UNITS.find(([re]) => re.test(name));
+  return hit ? `${amount}${hit[1]}` : amount;
+};
+
 const splitIngredientLine = (line: string) => {
-  const cleanLine = normalizeHalf(line).replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
+  const cleanLine = normalizeHalf(normalizeKoreanCount(line)).replace(/\(([\d½¼¾./~-]+)\)/g, '$1큰술');
   const match = cleanLine.match(/^(.*\S)\s+((?:약\s*)?[\d½¼¾][\d./½¼¾~\-]*\s*\S*)$/);
   if (match) {
-    let name = match[1];
-    let amount = match[2].trim();
-    if (/^(약\s*)?[\d½¼¾./~-]+$/.test(amount)) {
-      amount = `${amount}큰술`;
-    }
+    const name = match[1];
+    const amount = withDefaultUnit(name, match[2].trim());
     return { name, amount };
   }
   const simpleMatch = cleanLine.match(/^(.*\S)\s+([\d.]+)$/);
   if (simpleMatch) {
-    return { name: simpleMatch[1], amount: `${simpleMatch[2]}큰술` };
+    return { name: simpleMatch[1], amount: withDefaultUnit(simpleMatch[1], simpleMatch[2]) };
+  }
+  // 띄어쓰기 없이 붙여 쓴 경우: "고기1근", "버섯3개", "참기름1/2큰술"
+  const tightMatch = cleanLine.match(/^(.*?[^\d\s½¼¾./~(\-])((?:약\s*)?[\d½¼¾][\d./½¼¾~\-]*\s*\S*)$/);
+  if (tightMatch) {
+    return { name: tightMatch[1], amount: withDefaultUnit(tightMatch[1], tightMatch[2].trim()) };
   }
   return { name: cleanLine, amount: '' };
 };
@@ -129,6 +210,47 @@ const ZoomIcon = () => (
     <path d="m16 16 4 4M11 8v6M8 11h6" />
   </svg>
 );
+
+// AI 분석 중 모달: 제목 글자가 하나씩 물결치고, 아래 안내 문구가 단계별로 바뀐다.
+const AI_SNS_STEPS = ['영상과 더보기란을 읽고 있어요', '재료와 양념을 찾고 있어요', '조리 순서를 정리하고 있어요', '거의 다 됐어요, 잠시만요'];
+const AI_PHOTO_STEPS = ['사진 속 글씨를 읽고 있어요', '재료와 양념을 나누고 있어요', '조리 순서를 정리하고 있어요', '거의 다 됐어요, 잠시만요'];
+
+const AiLoadingModal = ({ title, steps }: { title: string; steps: string[] }) => {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setStep((s) => Math.min(s + 1, steps.length - 1)), 3000);
+    return () => clearInterval(timer);
+  }, [steps.length]);
+
+  let n = 0; // 글자마다 시작 시점을 조금씩 늦춰 물결처럼 보이게 한다
+  return (
+    <div className="mdl-bg ai-load-bg" role="alertdialog" aria-modal="true" aria-busy="true" aria-label={title}>
+      <div className="ai-load">
+        <div className="ai-load-emoji" aria-hidden="true">🍳</div>
+        <div className="ai-load-title" aria-hidden="true">
+          {title.split(' ').map((word, wi) => (
+            <React.Fragment key={wi}>
+              {wi > 0 && ' '}
+              <span className="ai-word">
+                {Array.from(word).map((ch) => {
+                  const i = n++;
+                  return (
+                    <span key={i} style={{ '--i': i } as React.CSSProperties}>
+                      {ch}
+                    </span>
+                  );
+                })}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
+        <p key={step} className="ai-load-step" role="status" aria-live="polite">
+          {steps[step]}
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const CopyIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -249,16 +371,23 @@ export default function App() {
   const [cloudReady, setCloudReady] = useState(false);
 
   // Navigation & View States
-  const [tab, setTab] = useState<'home' | 'my' | 'imp' | 'ai'>('home');
-  const [imp, setImp] = useState<'' | 'sns' | 'photo' | 'my' | 'ai'>('');
-  const [viewRecipeId, setViewRecipeId] = useState<number | null>(null);
+  const [tab, setTab] = useState<'home' | 'my' | 'imp' | 'ai'>(() =>
+    ['home', 'my', 'imp', 'ai'].includes(RESTORED_NAV?.tab) ? RESTORED_NAV.tab : 'home'
+  );
+  const [imp, setImp] = useState<'' | 'sns' | 'photo' | 'my' | 'ai'>(() =>
+    ['sns', 'photo', 'my', 'ai'].includes(RESTORED_NAV?.imp) ? RESTORED_NAV.imp : ''
+  );
+  const [viewRecipeId, setViewRecipeId] = useState<number | null>(() => {
+    const id = RESTORED_NAV?.viewRecipeId;
+    return typeof id === 'number' && recipes.some((r) => r.id === id) ? id : null;
+  });
   const [editingRecipe, setEditingRecipe] = useState<Partial<Recipe> | null>(null);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
 
   // Search & Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCat, setSelectedCat] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>(() => String(RESTORED_NAV?.filters?.q ?? ''));
+  const [selectedCat, setSelectedCat] = useState<string>(() => String(RESTORED_NAV?.filters?.cat ?? ''));
+  const [selectedFilter, setSelectedFilter] = useState<string>(() => String(RESTORED_NAV?.filters?.f ?? ''));
 
   // Servings stepper in Detail View
   const [servings, setServings] = useState(2);
@@ -282,11 +411,11 @@ export default function App() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   // Export Modal state
-  const [exportOpen, setExportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(() => !!RESTORED_NAV?.exportOpen);
   const [exportSelected, setExportSelected] = useState<Record<number, boolean>>({});
 
   // 레시피 삭제(선택) 페이지 state
-  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(() => !!RESTORED_NAV?.deleteMode);
   const [deleteSelected, setDeleteSelected] = useState<Record<number, boolean>>({});
   const [deleteArmed, setDeleteArmed] = useState(false); // 삭제 확인(2단계) 대기 상태
 
@@ -356,14 +485,18 @@ export default function App() {
     const snap: NavSnap = { tab, imp, viewRecipeId, editing: isEditing, exportOpen, deleteMode };
     const key = navKeyOf(snap);
     const last = lastNavRef.current;
+    const filters = { q: searchQuery, cat: selectedCat, f: selectedFilter };
     if (!last) {
-      window.history.replaceState({ ...snap, idx: 0 }, '');
-      lastNavRef.current = { key, idx: 0, snap };
+      // 새로고침으로 다시 열린 경우: 기록 번호를 이어받아 뒤로가기가 계속 맞게 동작하게 한다.
+      const startIdx = RESTORED_NAV ? RESTORED_NAV.idx : 0;
+      const startPrev = RESTORED_NAV ? RESTORED_NAV.prev : undefined;
+      window.history.replaceState({ ...snap, idx: startIdx, prev: startPrev, filters }, '');
+      lastNavRef.current = { key, idx: startIdx, snap, prev: startPrev };
       return;
     }
     if (last.key === key) return;
     const idx = last.idx + 1;
-    window.history.pushState({ ...snap, idx, prev: last.snap }, '');
+    window.history.pushState({ ...snap, idx, prev: last.snap, filters }, '');
     lastNavRef.current = { key, idx, snap, prev: last.snap };
   }, [tab, imp, viewRecipeId, isEditing, exportOpen, deleteMode]);
 
@@ -383,6 +516,75 @@ export default function App() {
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // 검색어·카테고리가 바뀌면 현재 history 항목에도 반영(항목을 새로 쌓지는 않는다)
+  useEffect(() => {
+    try {
+      const st = window.history.state;
+      if (!st || typeof st.idx !== 'number') return;
+      window.history.replaceState({ ...st, filters: { q: searchQuery, cat: selectedCat, f: selectedFilter } }, '');
+    } catch {
+      /* replaceState 횟수 제한 등은 무시 */
+    }
+  }, [searchQuery, selectedCat, selectedFilter]);
+
+  // 화면을 이동하면 새 화면은 맨 위에서 시작한다. 새로고침 직후에는 직전 스크롤 위치로 복원한다.
+  const scrollNavKey = `${tab}|${imp}|${viewRecipeId ?? ''}|${isEditing ? 1 : 0}|${exportOpen ? 1 : 0}|${deleteMode ? 1 : 0}`;
+  const lastScrollKeyRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const prev = lastScrollKeyRef.current;
+    lastScrollKeyRef.current = scrollNavKey;
+    if (prev === null) {
+      try {
+        const s = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || 'null');
+        if (RESTORED_NAV && s && s.idx === RESTORED_NAV.idx && typeof s.y === 'number') window.scrollTo(0, s.y);
+      } catch {
+        /* 복원 실패 시 그대로 */
+      }
+      return;
+    }
+    if (prev !== scrollNavKey) scrollToTop();
+  }, [scrollNavKey]);
+
+  useEffect(() => {
+    const save = () => {
+      try {
+        sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ idx: lastNavRef.current?.idx ?? 0, y: window.scrollY }));
+      } catch {
+        /* 무시 */
+      }
+    };
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') save();
+    };
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', onHide);
+    };
+  }, []);
+
+  // 폰 상단 상태바(시계·아이콘 줄) 색을 앱 배경색에 맞춘다. index.html 의 theme-color(주황)를 덮어쓰고 다크 모드 전환도 따라간다.
+  useEffect(() => {
+    const apply = () => {
+      const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#fafafa';
+      const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+      let meta = metas[0];
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        document.head.appendChild(meta);
+      }
+      meta.removeAttribute('media');
+      meta.content = bg;
+      metas.slice(1).forEach((m) => m.remove());
+    };
+    apply();
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    mq?.addEventListener?.('change', apply);
+    return () => mq?.removeEventListener?.('change', apply);
   }, []);
 
   // 앱 안의 뒤로가기 버튼: 이동 기록이 있으면 history.back(), 없으면 fallback 실행
@@ -753,7 +955,7 @@ export default function App() {
     return selected
       .map(
         (r) =>
-          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념장]\n${r.sau || '-'}\n\n[조리순서]\n${r.steps}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
+          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념장]\n${r.sau || '-'}\n\n[조리순서]\n${formatStepsNumbered(r.steps)}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
       )
       .join('\n\n');
   };
@@ -1034,7 +1236,7 @@ export default function App() {
               </button>
 
               {/* 오른쪽: 기존에 있던 즐겨찾기, 수정, 삭제 버튼 (유지) */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   type="button"
                   className="ic"
@@ -1398,22 +1600,8 @@ export default function App() {
               />
             </div>
 
-            {/* Big SNS Import CTA Button */}
-            <button
-              className="bt"
-              style={{ margin: '14px 0px 32px 0px' }}
-              onClick={() => {
-                setSnsUrl('');
-                setSnsMessage('');
-                setTab('imp');
-                setImp('sns');
-              }}
-            >
-              SNS 레시피 가져오기
-            </button>
-
             {/* Categories */}
-            <h3>카테고리</h3>
+            <h3 style={{ marginTop: '28px' }}>카테고리</h3>
             <div className="cats">
               <button
                 className="ct"
@@ -1811,7 +1999,7 @@ export default function App() {
                     <button className="bt o" type="button" style={{ marginTop: '10px' }} onClick={handleRecognizePhoto} disabled={ocrLoading}>
                       {ocrLoading ? 'AI가 사진 내용을 정리하는 중…' : '✨ AI로 사진 레시피 정리'}
                     </button>
-                    <p className="s" style={{ marginTop: '6px' }}>AI가 정리한 내용을 아래에 채웠어요. 저장 전에 확인하고 수정해 주세요.</p>
+                    <p className="s" style={{ marginTop: '6px' }}>AI가 정리한 내용을 아래에 채웠어요.<br/> 저장 전에 확인하고 수정해 주세요.</p>
                     {photoAiError && <p role={'alert'} className={'s'} style={{ color: '#c62828', overflowWrap: 'anywhere' }}>AI 오류: {photoAiError}</p>}
                     <label className="fl" htmlFor="photo-title">요리명</label>
                     <input id="photo-title" value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} placeholder="예: 된장찌개" />
@@ -1944,6 +2132,7 @@ export default function App() {
               aria-label={title}
               title={title}
               onClick={() => {
+                scrollToTop();
                 setViewRecipeId(null);
                 setTab(k as any);
                 setImp('');
@@ -1964,6 +2153,10 @@ export default function App() {
           ))}
         </nav>
       )}
+
+      {/* AI 분석 중 모달 (유튜브 영상 / 사진 정리) */}
+      {snsLoading && <AiLoadingModal title="AI가 영상을 분석하고 있어요..." steps={AI_SNS_STEPS} />}
+      {ocrLoading && <AiLoadingModal title="AI가 사진을 정리하고 있어요..." steps={AI_PHOTO_STEPS} />}
 
       {/* Export Modal */}
       {exportOpen && (
