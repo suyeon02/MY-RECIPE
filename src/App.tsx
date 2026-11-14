@@ -281,15 +281,6 @@ const AiLoadingModal = ({ title, steps }: { title: string; steps: string[] }) =>
   );
 };
 
-const CopyIcon = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <path fillRule="evenodd" d="M4.75 3A1.75 1.75 0 003 4.75v9.5c0 .966.784 1.75 1.75 1.75h1.5a.75.75 0 000-1.5h-1.5a.25.25 0 01-.25-.25v-9.5a.25.25 0 01.25-.25h9.5a.25.25 0 01.25.25v1.5a.75.75 0 001.5 0v-1.5A1.75 1.75 0 0014.25 3h-9.5zm5 5A1.75 1.75 0 008 9.75v9.5c0 .966.784 1.75 1.75 1.75h9.5A1.75 1.75 0 0021 19.25v-9.5A1.75 1.75 0 0019.25 8h-9.5zM9.5 9.75a.25.25 0 01.25-.25h9.5a.25.25 0 01.25.25v9.5a.25.25 0 01-.25.25h-9.5a.25.25 0 01-.25-.25v-9.5z" />
-  </svg>
-);
-
-
-
-
 const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
   <svg
     className="heart-icon"
@@ -463,6 +454,38 @@ export default function App() {
   // 재료 리스트
   const [isIngredientsOpen, setIsIngredientsOpen] = useState(true);
 
+  // 요리 노트의 검색창·카테고리: 아래로 스크롤하면 위로 슬라이드되며 숨고, 위로 스크롤하면 다시 나타난다.
+  // (상단 메뉴는 모든 탭에서 항상 고정)
+  const [isFilterVisible, setIsFilterVisible] = useState(true);
+  const lastScrollTopRef = useRef(0);
+  const searchFocusedRef = useRef(false); // 검색어를 입력하는 동안에는 숨기지 않는다
+
+  useEffect(() => {
+    setIsFilterVisible(true);
+    lastScrollTopRef.current = Math.max(window.scrollY || 0, 0);
+    if (tab !== 'my') return;
+    const mainEl = document.querySelector('main');
+    const handleScroll = () => {
+      const st = Math.max(window.scrollY || 0, mainEl?.scrollTop || 0);
+      if (st <= 10 || searchFocusedRef.current) {
+        setIsFilterVisible(true);
+      } else if (st > lastScrollTopRef.current + 5) {
+        setIsFilterVisible(false);
+      } else if (st < lastScrollTopRef.current - 5) {
+        setIsFilterVisible(true);
+      }
+      lastScrollTopRef.current = st <= 0 ? 0 : st;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    mainEl?.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      mainEl?.removeEventListener('scroll', handleScroll);
+    };
+  }, [tab, imp]);
+
+
   // 화면 비율(%): 70% ~ 150%, 10% 단위. 마지막 설정은 기기에 저장해 다음 접속에도 유지한다.
   const [zoomLevel, setZoomLevel] = useState<number>(() => {
     try {
@@ -520,6 +543,7 @@ export default function App() {
   const lastNavRef = useRef<{ key: string; idx: number; snap: NavSnap; prev?: NavSnap } | null>(null);
   const isEditing = !!editingRecipe;
   const exitArmedRef = useRef(false); // 첫 번째 뒤로가기 후 2초 동안 true
+  const chipScrollRef = useRef<HTMLDivElement>(null);
   const filtersRef = useRef({ q: '', cat: '', f: '' });
   filtersRef.current = { q: searchQuery, cat: selectedCat, f: selectedFilter };
 
@@ -648,6 +672,14 @@ export default function App() {
     }
     if (prev !== scrollNavKey) scrollToTop();
   }, [scrollNavKey]);
+
+  // 선택한 카테고리 칩이 화면 밖에 있으면 가운데로 슬라이드해서 보이게 한다.
+  // (홈에서 카테고리를 눌러 들어왔을 때, 상세 화면에서 돌아왔을 때, 새로고침 후 복원 때)
+  useEffect(() => {
+    if (tab !== 'my') return;
+    const el = chipScrollRef.current?.querySelector<HTMLElement>('.ch.on');
+    el?.scrollIntoView?.({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [scrollNavKey, selectedCat]);
 
   useEffect(() => {
     const save = () => {
@@ -788,7 +820,7 @@ export default function App() {
   useEffect(() => {
     if (deleteConfirmId === null) return;
     const timer = setTimeout(() => setDeleteConfirmId(null), 3000);
-    return () => clearTimeout(timer);
+    return () => clearInterval(timer);
   }, [deleteConfirmId]);
 
   const toggleFav = (id: number, e?: React.MouseEvent) => {
@@ -1178,55 +1210,131 @@ export default function App() {
     <div id="app" style={{ zoom: `${zoomLevel / 100}` } as React.CSSProperties}>
       {/* 1. Header (when not in edit mode or detail view) */}
       {!editingRecipe && !viewRecipeId && !deleteMode && (
-        <div className="top">
-          <b className="lg">MY RECIPE</b>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            <div className="zoom-wrap" ref={zoomWrapRef}>
-              <button
-                type="button"
+        <div
+          className="top-wrap"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+            pointerEvents: 'none', // 숨은 검색창 자리가 아래 목록의 터치를 가로채지 않게
+          }}
+        >
+          <div className="top" style={{ position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
+            {tab === 'home' ? (
+              <b className="lg">MY RECIPE</b>
+            ) : tab === 'imp' && imp ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="ic"
+                  onClick={() => {
+                    setSnsUrl('');
+                    setSnsMessage('');
+                    goBack(() => setImp(''));
+                  }}
+                  title="뒤로가기"
+                >
+                  <BackIcon />
+                </button>
+                <b className="lg" style={{ fontSize: '22px', color: 'var(--tx)' }}>
+                  {imp === 'sns' ? 'SNS 링크로 가져오기' : imp === 'my' ? '직접 작성' : imp === 'photo' ? '사진으로 등록' : '레시피 추가'}
+                </b>
+              </div>
+            ) : (
+              <b className="lg" style={{ fontSize: '22px', color: 'var(--tx)' }}>
+                {tab === 'my' ? '요리 노트' : tab === 'imp' ? '레시피 추가' : tab === 'ai' ? 'AI 셰프' : ''}
+              </b>
+            )}
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <div className="zoom-wrap" ref={zoomWrapRef}>
+                <button
+                  type="button"
+                  className="ic-btn"
+                  onClick={() => setZoomOpen((v) => !v)}
+                  title="화면 비율"
+                  aria-label="화면 비율 조절"
+                  aria-expanded={zoomOpen}
+                  style={{ color: zoomLevel !== 100 ? 'var(--or)' : '#3c3c3c' }}
+                >
+                  <ZoomIcon />
+                </button>
+                {zoomOpen && (
+                  /* 확대·축소해도 같은 크기로 보이도록 역배율 적용 */
+                  <div className="zoom-ctl zoom-pop" role="group" aria-label="화면 비율 조절" style={{ zoom: `${100 / zoomLevel}` }}>
+                    <button type="button" onClick={handleZoomOut} disabled={zoomLevel <= ZOOM_MIN} aria-label="화면 줄이기">
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      className={`zoom-val${zoomLevel !== 100 ? ' changed' : ''}`}
+                      onClick={handleZoomReset}
+                      title="100%로 되돌리기"
+                      aria-label={`현재 ${zoomLevel}%, 누르면 100%로 되돌리기`}
+                    >
+                      {zoomLevel}%
+                    </button>
+                    <button type="button" onClick={handleZoomIn} disabled={zoomLevel >= ZOOM_MAX} aria-label="화면 키우기">
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+              <span
                 className="ic-btn"
-                onClick={() => setZoomOpen((v) => !v)}
-                title="화면 비율"
-                aria-label="화면 비율 조절"
-                aria-expanded={zoomOpen}
-                style={{ color: zoomLevel !== 100 ? 'var(--or)' : '#505050' }}
+                onClick={() => {
+                  setExportSelected({}); // 내보내기 모달 기본화면 전체 해제 상태
+                  setExportOpen(true);
+                }}
+                title="레시피 내보내기"
               >
-                <ZoomIcon />
-              </button>
-              {zoomOpen && (
-                /* 확대·축소해도 같은 크기로 보이도록 역배율 적용 */
-                <div className="zoom-ctl zoom-pop" role="group" aria-label="화면 비율 조절" style={{ zoom: `${100 / zoomLevel}` }}>
-                  <button type="button" onClick={handleZoomOut} disabled={zoomLevel <= ZOOM_MIN} aria-label="화면 줄이기">
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    className={`zoom-val${zoomLevel !== 100 ? ' changed' : ''}`}
-                    onClick={handleZoomReset}
-                    title="100%로 되돌리기"
-                    aria-label={`현재 ${zoomLevel}%, 누르면 100%로 되돌리기`}
-                  >
-                    {zoomLevel}%
-                  </button>
-                  <button type="button" onClick={handleZoomIn} disabled={zoomLevel >= ZOOM_MAX} aria-label="화면 키우기">
-                    +
-                  </button>
-                </div>
-              )}
+                <DownloadIcon />
+              </span>
             </div>
-            <span
-              className="ic-btn"
-              onClick={() => {
-                const initialSel: Record<number, boolean> = {};
-                recipes.forEach((r) => (initialSel[r.id] = true));
-                setExportSelected(initialSel);
-                setExportOpen(true);
-              }}
-              title="레시피 내보내기"
-            >
-              <DownloadIcon />
-            </span>
           </div>
+
+          {/* 요리 노트: 검색창 + 카테고리 슬라이드. 아래로 스크롤하면 상단 메뉴 뒤로 슬라이드되어 숨는다.
+              (자리는 그대로 두고 transform 으로만 움직여서 아래 목록이 흔들리지 않는다) */}
+          {tab === 'my' && (
+            <div
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                padding: '2px 18px 4px',
+                background: 'var(--bg)',
+                transform: isFilterVisible ? 'translateY(0)' : 'translateY(-100%)',
+                transition: 'transform 0.2s ease-in-out',
+                pointerEvents: isFilterVisible ? 'auto' : 'none',
+              }}
+            >
+              <input
+                style={{ marginTop: 0 }}
+                placeholder="요리명 또는 재료 검색"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  searchFocusedRef.current = true;
+                  setIsFilterVisible(true);
+                }}
+                onBlur={() => {
+                  searchFocusedRef.current = false;
+                }}
+              />
+              <div className="chip-scroll" ref={chipScrollRef} style={{ overscrollBehaviorX: 'contain' }}>
+                <button className={`ch ${selectedCat === '' ? 'on' : ''}`} onClick={() => setSelectedCat('')}>
+                  전체
+                </button>
+                {CATS.map((c) => (
+                  <button
+                    key={c}
+                    className={`ch ${selectedCat === c ? 'on' : ''}`}
+                    onClick={() => setSelectedCat(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1688,14 +1796,17 @@ export default function App() {
               )}
             </div>
 
-            <button
-              type="button"
-              className="bt del-confirm-btn"
-              disabled={deleteCount === 0}
-              onClick={deleteSelectedRecipes}
-            >
-              {deleteArmed ? `${deleteCount}개 삭제 확인 (한 번 더 누르세요)` : `${deleteCount}개 삭제`}
-            </button>
+            {/* 하단 고정 삭제하기 버튼 영역 */}
+            <div className="del-bottom-bar">
+              <button
+                type="button"
+                className="bt del-confirm-btn"
+                disabled={deleteCount === 0}
+                onClick={deleteSelectedRecipes}
+              >
+                {deleteArmed ? `${deleteCount}개 삭제 확인 (한 번 더 누르세요)` : `${deleteCount}개 삭제하기`}
+              </button>
+            </div>
           </div>
         ) : tab === 'home' ? (
           /* =========================================================
@@ -1828,43 +1939,6 @@ export default function App() {
               SCREEN 5: MY RECIPE NOTES TAB
              ========================================================= */
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '5px 0 15px' }}>
-              <h2 style={{ margin: 0 }}>요리 노트</h2>
-              <button
-                type="button"
-                className="circ"
-                aria-label={selectedFilter === '즐겨찾기' ? '전체 레시피 보기' : '즐겨찾기만 보기'}
-                aria-pressed={selectedFilter === '즐겨찾기'}
-                onClick={() => setSelectedFilter((curr) => (curr === '즐겨찾기' ? '' : '즐겨찾기'))}
-                style={{ color: selectedFilter === '즐겨찾기' ? 'var(--or)' : '#80766a', fontSize: '24px' }}
-              >
-                <HeartIcon filled={selectedFilter === '즐겨찾기'} />
-              </button>
-            </div>
-            <input
-              placeholder="요리명 또는 재료 검색"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {/* Category Chips: 1단 가로 슬라이드 */}
-            <div className="chip-scroll">
-              <button
-                className={`ch ${selectedCat === '' ? 'on' : ''}`}
-                onClick={() => setSelectedCat('')}
-              >
-                전체
-              </button>
-              {CATS.map((c) => (
-                <button
-                  key={c}
-                  className={`ch ${selectedCat === c ? 'on' : ''}`}
-                  onClick={() => setSelectedCat(c)}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-
             {/* 레시피 개수(왼쪽) · 삭제 버튼(오른쪽) */}
             <div className="note-meta">
               <span className="note-count">레시피 {filteredRecipes.length}개</span>
@@ -1910,7 +1984,7 @@ export default function App() {
           <div>
             {!imp ? (
               <div>
-                <h2>레시피 추가</h2>
+                
 
                 <div className="recipe-choice-list">
                   <div className="cd mc recipe-choice" onClick={() => setImp('my')}>
@@ -1943,22 +2017,7 @@ export default function App() {
             ) : imp === 'sns' ? (
               /* CORE CHANGED COMPONENT: SNS RECIPE EXTRACTOR */
               <div>
-                {/* 상단 뒤로가기 버튼 */}
-                <div style={{ marginBottom: '16px' }}>
-                  <button
-                    type="button"
-                    className="ic"
-                    onClick={() => {
-                      setSnsUrl('');
-                      setSnsMessage('');
-                      goBack(() => setImp(''));
-                    }}
-                    title="뒤로가기"
-                  >
-                    <BackIcon />
-                  </button>
-                </div>
-                <h2>SNS 링크로 가져오기</h2>
+
 
                 <input
                   id="u"
@@ -2002,19 +2061,7 @@ export default function App() {
             ) : imp === 'my' ? (
               /* Direct Manual Entry */
               <div>
-                {/* 상단 뒤로가기 버튼 */}
-                <div style={{ marginBottom: '16px' }}>
-                  <button
-                    type="button"
-                    className="ic"
-                    onClick={() => goBack(() => setImp(''))}
-                    title="뒤로가기"
-                  >
-                    <BackIcon />
-                  </button>
-                </div>
 
-                <h2>직접 작성</h2>
 
                 <input
                   id="d"
@@ -2093,18 +2140,7 @@ export default function App() {
             ) : imp === 'photo' ? (
               /* Photo Register Entry */
               <div>
-                {/* 상단 뒤로가기 버튼 */}
-                <div style={{ marginBottom: '16px' }}>
-                  <button
-                    type="button"
-                    className="ic"
-                    onClick={() => goBack(() => setImp(''))}
-                    title="뒤로가기"
-                  >
-                    <BackIcon />
-                  </button>
-                </div>
-                <h2>사진으로 등록</h2>
+
                 <div className="row">
                   <label className="bt o" htmlFor="p_fc" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <CameraIcon /> 사진 찍기

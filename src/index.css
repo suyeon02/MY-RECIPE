@@ -110,6 +110,7 @@ h3 {
   top: 0;
   background: var(--bg);
   z-index: 10;
+  margin-bottom: 5px;
 }
 
 .top .lg {
@@ -445,7 +446,7 @@ nav .nav-icon {
 
 .hi {
   color: var(--sub);
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 15px;
 }
 
@@ -1151,7 +1152,7 @@ nav .nav-icon {
 }
 
 .recipe-choice-list {
-  margin: 14px 0;
+  margin: 0px 0;
 }
 
 .mc.recipe-choice {
@@ -1160,7 +1161,7 @@ nav .nav-icon {
   gap: 20px;
   min-height: 120px;
   padding: 0px 25px;
-  margin: 16px 0;
+  margin: 0px 0 10px;
   border: 1px solid var(--bd);
   border-radius: 20px;
   background: var(--cd);
@@ -1465,7 +1466,7 @@ nav .nav-icon {
 .rcp .ingredient-head .ingredient-heading{margin:0}
 .rcp .base-servings{font-size:13px;font-weight:500;color:var(--sub)}
 .rcp .ingredient-list{display:grid;gap:6px;margin-bottom:13px;margin-top: 10px;}
-.rcp .ingredient-list .ing{margin:0}
+.rcp .ingredient-list .ng{margin:0}
 
 .chip-scroll {
   display: flex;
@@ -1499,8 +1500,28 @@ nav .nav-icon {
 }
 .note-del-btn:disabled { opacity: 0.4; cursor: default; }
 
-.delete-page .del-list { margin: 0 0 24px; }
-.del-confirm-btn { background: rgb(91, 89, 86); color: #fff; margin-bottom: 24px; }
+/* 삭제 페이지 레이아웃 스크롤 및 하단 고정 버튼 설정 */
+.delete-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  box-sizing: border-box;
+}
+
+.delete-page .del-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0 0 16px;
+  padding-bottom: 20px;
+}
+
+.del-bottom-bar {
+  flex: none;
+  padding-top: 10px;
+  background: var(--bg);
+}
+
+.del-confirm-btn { background: rgb(91, 89, 86); color: #fff; margin-bottom: 0px; }
 .del-confirm-btn:disabled { opacity: 0.4; cursor: default; }
 
 .rcp .ingredient-groups { display: grid; gap: 16px; margin-top: 10px; }
