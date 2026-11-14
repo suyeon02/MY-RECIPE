@@ -228,7 +228,7 @@ const getIngredientIcon = (name: string) =>
   INGREDIENT_ICONS.find(([pattern]) => pattern.test(name))?.[1] || '🍽️';
 
 const DownloadIcon = () => (
-  <svg className="download-icon" width="32" stroke="#505050" strokeWidth="0.4" strokeLinejoin="round" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <svg className="download-icon" width="32" stroke="#292929" strokeWidth="0.4" strokeLinejoin="round" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <path d="M4.97 12.97a.75.75 0 101.06 1.06L11 9.06v12.19a.75.75 0 001.5 0V9.06l4.97 4.97a.75.75 0 101.06-1.06l-6.25-6.25a.75.75 0 00-1.06 0l-6.25 6.25zM4.75 3.5a.75.75 0 010-1.5h14.5a.75.75 0 010 1.5H4.75z" />
   </svg>
 );
@@ -298,7 +298,7 @@ const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
     viewBox="0 0 24 24"
     fill="currentColor"
     stroke={filled ? 'none' : '#505050'}
-    strokeWidth="0.4"
+    strokeWidth="0.3"
     strokeLinejoin="round"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
@@ -317,14 +317,14 @@ const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
 
 
 const TrashIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#505050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292929" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
   </svg>
 );
 
 
 const EditIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#505050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#292929" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
   </svg>
 );
@@ -1335,9 +1335,23 @@ export default function App() {
           /* =========================================================
               SCREEN 3: RECIPE DETAIL VIEW
              ========================================================= */
-          <div className="recipe-detail">
-            {/* 1. 상단 바: 뒤로가기 버튼 + [기존 유지] 하트 & 수정/삭제 버튼 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', marginTop: '12px' }}>
+          <div className="recipe-detail" style={{ paddingTop: '56px' }}>
+            {/* 1. 상단 바: fixed로 화면 상단에 고정 */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              position: 'fixed',
+              top: '0',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '100%',
+              maxWidth: '480px',
+              background: 'var(--bg)',
+              zIndex: '50',
+              padding: '12px 18px',
+              boxSizing: 'border-box'
+            }}>
               {/* 왼쪽: 뒤로가기 버튼 */}
               <button
                 type="button"
@@ -1348,12 +1362,12 @@ export default function App() {
                 <BackIcon />
               </button>
 
-              {/* 오른쪽: 기존에 있던 즐겨찾기, 수정, 삭제 버튼 (유지) */}
+              {/* 오른쪽: 하트, 수정, 삭제 버튼 (#292929 색상 적용) */}
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   type="button"
                   className="ic"
-                  style={{ color: currentViewingRecipe.fav ? 'var(--or)' : '#80766a', background: 'var(--cd)' }}
+                  style={{ color: currentViewingRecipe.fav ? 'var(--or)' : '#292929'}}
                   onClick={(e) => toggleFav(currentViewingRecipe.id, e)}
                   title="즐겨찾기"
                 >
@@ -1362,7 +1376,7 @@ export default function App() {
                 <button
                   type="button"
                   className="ic"
-                  style={{ background: 'var(--cd)' }}
+                  style={{ color: '#292929' }}
                   onClick={() => setEditingRecipe({ ...currentViewingRecipe })}
                   title="레시피 수정"
                 >
@@ -1371,7 +1385,7 @@ export default function App() {
                 <button
                   type="button"
                   className={`ic ${deleteConfirmId === currentViewingRecipe.id ? 'rd' : ''}`}
-                  style={{ background: deleteConfirmId === currentViewingRecipe.id ? '#e5484d' : 'var(--cd)' }}
+                  style={{ color: deleteConfirmId === currentViewingRecipe.id ? '#fff' : '#292929', background: deleteConfirmId === currentViewingRecipe.id ? '#e5484d' : '' }}
                   onClick={() => handleDelete(currentViewingRecipe.id)}
                   title="레시피 삭제"
                 >
@@ -1691,7 +1705,7 @@ export default function App() {
             <p className="hi">좋은 하루예요 👋</p>
             <div className="hd">
               오늘은 어떤 <em>요리</em>를<br />
-              해볼까요?
+              해볼까요? 🍳
             </div>
 
             {/* Search Input */}
