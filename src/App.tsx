@@ -24,8 +24,34 @@ export interface Recipe {
   channel?: string;
 }
 
-const CATS = ['밑반찬', '국·찌개', '메인 요리', '면·분식', '밥·죽', '간식·디저트', '기타'];
-const EMJ = ['🥗', '🍲', '🍖', '🍜', '🍙', '🍰', '🍽️'];
+const CATS = ['밥·죽', '국·찌개·전골', '볶음', '조림', '구이·찜', '무침·샐러드', '전·튀김', '면·분식', '김치·장아찌', '양념', '디저트·음료'];
+const EMJ = ['🍚', '🍲', '🍳', '🥘', '🍖', '🥗', '🍤', '🍜', '🥬', '🫙', '🍰'];
+
+// ── 예전 카테고리 → 새 카테고리 ───────────────────────────────
+// 이름만 바뀐 것은 그대로 옮기고, 사라진 분류(밑반찬·메인 요리·기타 등)는 요리 이름의 말로 짐작한다.
+// 짐작할 수 없으면 예전 이름을 그대로 두어 레시피가 사라지거나 엉뚱한 분류로 가지 않게 한다.
+const LEGACY_CAT: Record<string, string> = { '국·찌개': '국·찌개·전골', '간식·디저트': '디저트·음료' };
+const CAT_KEYWORDS: [string, RegExp][] = [
+  ['디저트·음료', /케이크|쿠키|마카롱|푸딩|타르트|스콘|머핀|브라우니|스무디|주스|에이드|라떼|아이스크림|빙수|젤리|음료|디저트/],
+  ['면·분식', /면|국수|라면|라멘|우동|파스타|스파게티|수제비|냉면|떡볶이|라볶이|쫄면|짜장|짬뽕|순대|김밥|튀김우동|분식/],
+  ['국·찌개·전골', /찌개|전골|국$|국 |탕$|탕 |국밥|스프|수프/],
+  ['밥·죽', /볶음밥|비빔밥|덮밥|주먹밥|솥밥|리조또|필라프|오므라이스|밥$|밥 |죽$|죽 /],
+  ['전·튀김', /튀김|부침|돈까스|돈가스|커틀릿|치킨|강정|탕수육|너겟|동그랑땡|전$|전 /],
+  ['볶음', /볶음|닭갈비|제육|잡채|볶이/],
+  ['조림', /조림|졸임/],
+  ['구이·찜', /구이|찜|갈비|불고기|스테이크|바비큐|훈제|수육|보쌈|그릴|오븐/],
+  ['무침·샐러드', /무침|샐러드|나물|냉채|생채|파절이|버무/],
+  ['김치·장아찌', /김치|깍두기|장아찌|피클|절임|단무지|겉절이|동치미|짠지/],
+  ['양념', /양념|소스|드레싱|다대기|장$|청$|기름$|오일/],
+];
+const guessCat = (text: string) => CAT_KEYWORDS.find(([, re]) => re.test(String(text || '')))?.[0] ?? '';
+// keepOld=true: 짐작이 안 되면 예전 이름 유지(저장된 레시피용) / false: 비워 둠(새로 만드는 레시피용)
+const normalizeCat = (cat: string, name = '', keepOld = true) => {
+  if (CATS.includes(cat)) return cat;
+  if (LEGACY_CAT[cat]) return LEGACY_CAT[cat];
+  return guessCat(name) || guessCat(cat) || (keepOld ? cat || '' : '');
+};
+const catLabel = (cat: string) => cat || '미분류';
 const SL: Record<string, string> = { sns: 'SNS', my: '직접 작성', photo: '사진', ai: 'AI' };
 const TS = /^([0-9]{1,2}):([0-9]{2}) +(.*)$/;
 
@@ -41,6 +67,9 @@ const ZOOM_STORAGE_KEY = 'my_recipes_zoom';
 const ZOOM_MIN = 70;
 const ZOOM_MAX = 150;
 const ZOOM_STEP = 10;
+
+// 뒤로가기 두 번 종료: 첫 터치 때 '종료 확인용 항목'을 한 번만 깔아 두었다는 표시(탭 세션 동안 유지)
+const EXIT_GUARD_KEY = 'my_recipes_exit_guard';
 
 // ── 새로고침 복원 ──────────────────────────────────────────
 // 브라우저는 새로고침해도 현재 history 항목의 state를 그대로 보관한다.
@@ -76,7 +105,7 @@ const stripMin = (list: Recipe[]): Recipe[] =>
     .filter((r) => !isOldSeedRecipe(r))
     .map((r) => {
       const { min, ...rest } = r;
-      return rest as Recipe;
+      return { ...rest, cat: normalizeCat(rest.cat, rest.name) } as Recipe;
     });
 
 // Helper functions matching original prototype
@@ -205,7 +234,7 @@ const DownloadIcon = () => (
 );
 
 const ZoomIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <circle cx="11" cy="11" r="7" />
     <path d="m16 16 4 4M11 8v6M8 11h6" />
   </svg>
@@ -386,7 +415,10 @@ export default function App() {
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState<string>(() => String(RESTORED_NAV?.filters?.q ?? ''));
-  const [selectedCat, setSelectedCat] = useState<string>(() => String(RESTORED_NAV?.filters?.cat ?? ''));
+  const [selectedCat, setSelectedCat] = useState<string>(() => {
+    const c = String(RESTORED_NAV?.filters?.cat ?? '');
+    return CATS.includes(c) ? c : '';
+  });
   const [selectedFilter, setSelectedFilter] = useState<string>(() => String(RESTORED_NAV?.filters?.f ?? ''));
 
   // Servings stepper in Detail View
@@ -472,6 +504,13 @@ export default function App() {
     };
   }, [zoomOpen]);
 
+  const showToast = React.useCallback((msg: string) => {
+    setToastText(msg);
+    setTimeout(() => {
+      setToastText((curr) => (curr === msg ? null : curr));
+    }, 2400);
+  }, []);
+
   // ---------------------------------------------------------------
   // 브라우저/폰 뒤로가기 연동: 화면 이동(탭·레시피 보기·수정·추가·내보내기)마다
   // history 항목을 쌓고, 뒤로가기(popstate) 시 이전 화면으로 복원한다.
@@ -480,6 +519,9 @@ export default function App() {
   const navKeyOf = (n: NavSnap) => `${n.tab}|${n.imp}|${n.viewRecipeId ?? ''}|${n.editing ? 1 : 0}|${n.exportOpen ? 1 : 0}|${n.deleteMode ? 1 : 0}`;
   const lastNavRef = useRef<{ key: string; idx: number; snap: NavSnap; prev?: NavSnap } | null>(null);
   const isEditing = !!editingRecipe;
+  const exitArmedRef = useRef(false); // 첫 번째 뒤로가기 후 2초 동안 true
+  const filtersRef = useRef({ q: '', cat: '', f: '' });
+  filtersRef.current = { q: searchQuery, cat: selectedCat, f: selectedFilter };
 
   useEffect(() => {
     const snap: NavSnap = { tab, imp, viewRecipeId, editing: isEditing, exportOpen, deleteMode };
@@ -501,8 +543,43 @@ export default function App() {
   }, [tab, imp, viewRecipeId, isEditing, exportOpen, deleteMode]);
 
   useEffect(() => {
+    // 현재 화면의 history 항목을 다시 쌓는다(종료 확인용 항목 위로 되돌아올 때 사용)
+    const pushAppEntry = () => {
+      const last = lastNavRef.current;
+      if (!last) return;
+      try {
+        window.history.pushState({ ...last.snap, idx: last.idx, prev: last.prev, filters: filtersRef.current }, '');
+      } catch {
+        /* 무시 */
+      }
+    };
     const onPop = (e: PopStateEvent) => {
       const st = e.state;
+      // 가장 처음 화면에서 뒤로가기를 누르면 '종료 확인용 항목'에 닿는다.
+      if (st && st.guard) {
+        if (exitArmedRef.current) {
+          // 두 번째 뒤로가기 → 앱 종료: 설치형 앱(PWA)은 처음 항목을 벗어나면 앱이 닫힌다.
+          try {
+            window.close();
+          } catch {
+            /* 무시 */
+          }
+          window.history.back();
+          // 브라우저 탭처럼 벗어날 곳이 없어 화면이 그대로 남으면 정상 상태로 되돌린다.
+          setTimeout(() => {
+            if (window.history.state && window.history.state.guard) pushAppEntry();
+            exitArmedRef.current = false;
+          }, 500);
+          return;
+        }
+        exitArmedRef.current = true;
+        showToast('한 번 더 누르면 앱이 종료돼요');
+        pushAppEntry();
+        setTimeout(() => {
+          exitArmedRef.current = false;
+        }, 2000);
+        return;
+      }
       if (!st || typeof st.idx !== 'number') return;
       // 수정 화면(editing)은 객체 상태라 복원할 수 없으므로 항상 닫는다.
       const snap: NavSnap = { tab: st.tab, imp: st.imp, viewRecipeId: st.viewRecipeId ?? null, editing: false, exportOpen: !!st.exportOpen, deleteMode: !!st.deleteMode };
@@ -516,6 +593,31 @@ export default function App() {
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, [showToast]);
+
+  // 종료 확인용 항목 만들기: 크롬은 사용자가 화면을 만지기 전에 앱이 쌓은 항목을 뒤로가기 때 건너뛰므로
+  // 시작할 때가 아니라 '첫 터치·키 입력' 때 처음 화면 아래에 한 번만 깔아 둔다.
+  useEffect(() => {
+    const install = () => {
+      window.removeEventListener('pointerdown', install, true);
+      window.removeEventListener('keydown', install, true);
+      try {
+        if (sessionStorage.getItem(EXIT_GUARD_KEY)) return;
+        const st = window.history.state;
+        if (!st || st.idx !== 0 || st.guard) return; // 처음 화면(기록 번호 0)에서만
+        window.history.replaceState({ guard: true }, '');
+        window.history.pushState(st, '');
+        sessionStorage.setItem(EXIT_GUARD_KEY, '1');
+      } catch {
+        /* 무시 */
+      }
+    };
+    window.addEventListener('pointerdown', install, true);
+    window.addEventListener('keydown', install, true);
+    return () => {
+      window.removeEventListener('pointerdown', install, true);
+      window.removeEventListener('keydown', install, true);
+    };
   }, []);
 
   // 검색어·카테고리가 바뀌면 현재 history 항목에도 반영(항목을 새로 쌓지는 않는다)
@@ -637,8 +739,11 @@ export default function App() {
       try {
         const cloudRecipes = await getPublicRecipes(recipes);
         if (!active) return;
-        if (cloudRecipes.length) setRecipes(stripMin(cloudRecipes));
-        else await savePublicRecipes(recipes);
+        if (cloudRecipes.length > 0) {
+          setRecipes(stripMin(cloudRecipes));
+        } else if (recipes.length > 0) {
+          await savePublicRecipes(recipes);
+        }
         if (active) setCloudReady(true);
       } catch (error) {
         console.error('Firebase recipe load failed:', error);
@@ -652,10 +757,13 @@ export default function App() {
 
   useEffect(() => {
     if (!cloudReady) return;
-    savePublicRecipes(recipes).catch((error) => {
-      console.error('Firebase recipe save failed:', error);
-      showToast('클라우드 저장에 실패했어요. Firestore 규칙을 확인해 주세요.');
-    });
+    const timer = setTimeout(() => {
+      savePublicRecipes(recipes).catch((error) => {
+        console.error('Firebase recipe save failed:', error);
+        showToast('클라우드 저장에 실패했어요. Firestore 규칙을 확인해 주세요.');
+      });
+    }, 500);
+    return () => clearTimeout(timer);
   }, [recipes, cloudReady]);
 
   // Save recipes to localStorage
@@ -667,21 +775,21 @@ export default function App() {
     }
   }, [recipes]);
 
-  // Sync servings and reset video player when viewing recipe
+  // Sync servings and reset video player / delete confirm when viewing recipe
   useEffect(() => {
     setIsPlayingVideo(false);
+    setDeleteConfirmId(null);
     if (viewRecipeId) {
       const target = recipes.find((r) => r.id === viewRecipeId);
       if (target) setServings(Number(target.serv) || 2);
     }
   }, [viewRecipeId, recipes]);
 
-  const showToast = (msg: string) => {
-    setToastText(msg);
-    setTimeout(() => {
-      setToastText((curr) => (curr === msg ? null : curr));
-    }, 2400);
-  };
+  useEffect(() => {
+    if (deleteConfirmId === null) return;
+    const timer = setTimeout(() => setDeleteConfirmId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [deleteConfirmId]);
 
   const toggleFav = (id: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -736,7 +844,7 @@ export default function App() {
       const newRecipe: Recipe = {
         id: Date.now(),
         name: extracted.name || '유튜브 요리 레시피',
-        cat: CATS.includes(extracted.cat) ? extracted.cat : '메인 요리',
+        cat: normalizeCat(extracted.cat, extracted.name, false),
         serv: extracted.serv || 2,
         ing: Array.isArray(extracted.ing) ? extracted.ing.join('\n') : extracted.ing || '재료 정보',
         sau: Array.isArray(extracted.sau) ? extracted.sau.join('\n') : extracted.sau || '',
@@ -771,7 +879,7 @@ export default function App() {
       setEditingRecipe({
         id: 0,
         name: '',
-        cat: '기타',
+        cat: '',
         serv: 2,
         ing: '',
         sau: '',
@@ -796,7 +904,7 @@ export default function App() {
     const newRecipe: Recipe = {
       id: Date.now(),
       name: draftTitle.trim() || firstLine.slice(0, 20),
-      cat: '기타',
+      cat: normalizeCat('', draftTitle.trim() || firstLine.slice(0, 20), false),
       serv: 2,
       ing: draftIngredients,
       sau: draftSeasonings,
@@ -832,7 +940,7 @@ export default function App() {
     const savedRecipe: Recipe = {
       id: editingRecipe?.id || Date.now(),
       name,
-      cat: String(formData.get('cat') || '기타'),
+      cat: normalizeCat(String(formData.get('cat') || ''), name),
       serv: Number(formData.get('serv')) || 2,
       ing: LI(String(formData.get('ing') || '')).join('\n'),
       sau: LI(String(formData.get('sau') || '')).join('\n'),
@@ -871,7 +979,9 @@ export default function App() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setPreviewPhoto(String(reader.result));
+      const result = String(reader.result);
+      setPreviewPhoto(result);
+      setEditingRecipe((prev) => (prev ? { ...prev, img: result } : null));
     };
     reader.readAsDataURL(file);
   };
@@ -955,7 +1065,7 @@ export default function App() {
     return selected
       .map(
         (r) =>
-          `====================\n요리명: ${r.name}\n카테고리: ${r.cat}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념장]\n${r.sau || '-'}\n\n[조리순서]\n${formatStepsNumbered(r.steps)}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
+          `====================\n요리명: ${r.name}\n카테고리: ${catLabel(r.cat)}\n원문링크: ${r.url || '-'}\n\n[재료]\n${r.ing}\n\n[양념장]\n${r.sau || '-'}\n\n[조리순서]\n${formatStepsNumbered(r.steps)}\n\n[나만의 팁]\n${r.tip || '-'}\n====================`
       )
       .join('\n\n');
   };
@@ -1176,7 +1286,10 @@ export default function App() {
               <input name="name" defaultValue={editingRecipe.name || ''} placeholder="요리 이름" />
 
               <label className="fl">카테고리</label>
-              <select name="cat" defaultValue={editingRecipe.cat || '기타'}>
+              <select name="cat" defaultValue={editingRecipe.cat || ''}>
+                {!CATS.includes(editingRecipe.cat || '') && (
+                  <option value={editingRecipe.cat || ''}>{editingRecipe.cat || '카테고리 선택'}</option>
+                )}
                 {CATS.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -1357,7 +1470,7 @@ export default function App() {
               <h2 className="title">{currentViewingRecipe.name}</h2>
               <div className="metabar">
                 <p className="meta">
-                  {currentViewingRecipe.cat} · {SL[currentViewingRecipe.src] || '레시피'}
+                  {catLabel(currentViewingRecipe.cat)} · {SL[currentViewingRecipe.src] || '레시피'}
                   {currentViewingRecipe.difficulty ? ` · 난이도 ${currentViewingRecipe.difficulty}` : ''}
                 </p>
               </div>
@@ -1551,7 +1664,7 @@ export default function App() {
                       </svg>
                     </span>
                     <span className="exp-name">{r.name}</span>
-                    <span className="exp-category">{r.cat}</span>
+                    <span className="exp-category">{catLabel(r.cat)}</span>
                   </label>
                 ))
               ) : (
@@ -1578,7 +1691,7 @@ export default function App() {
             <p className="hi">좋은 하루예요 👋</p>
             <div className="hd">
               오늘은 어떤 <em>요리</em>를<br />
-              해볼까요? 🍳
+              해볼까요?
             </div>
 
             {/* Search Input */}
@@ -1656,7 +1769,7 @@ export default function App() {
 
                     <div className="nm">
                       <div>{r.name}</div>
-                      <div className="s">{r.cat}</div>
+                      <div className="s">{catLabel(r.cat)}</div>
                     </div>
                   </div>
                 ))
@@ -1687,7 +1800,7 @@ export default function App() {
                     </div>
                     <div className="nm">
                       <div>{r.name}</div>
-                      <div className="s">{r.cat}</div>
+                      <div className="s">{catLabel(r.cat)}</div>
                     </div>
                   </div>
                 ))}
@@ -1764,7 +1877,7 @@ export default function App() {
                     <div className="nm">
                       <div>{r.name}</div>
                       <div className="s">
-                        {r.cat} · {SL[r.src] || ''}
+                        {catLabel(r.cat)} · {SL[r.src] || ''}
                       </div>
                     </div>
                   </div>
@@ -2207,7 +2320,7 @@ export default function App() {
                     </svg>
                   </span>
                   <span className="exp-name">{r.name}</span>
-                  <span className="exp-category">{r.cat}</span>
+                  <span className="exp-category">{catLabel(r.cat)}</span>
                 </label>
               ))}
             </div>

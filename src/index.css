@@ -297,7 +297,7 @@ textarea {
 
 .bt.o {
   background: var(--cd);
-  color: black;
+  color: rgb(41, 41, 41);
   border: 1px solid var(--bd);
   border-radius: 30px;
 }
@@ -332,7 +332,7 @@ textarea {
 }
 
 .ch.on {
-  background: var(--or);
+  background: rgb(41, 41, 41);
   color: #fff;
   font-weight: 500;
 }
@@ -383,7 +383,7 @@ nav {
   border-radius: 24px 24px 0 0;
   background: var(--cd);
   box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.05);
-  padding: 3px 0 calc(3px + env(safe-area-inset-bottom, 0px));
+  padding: 3px 0 calc(1px + env(safe-area-inset-bottom, 0px));
   z-index: 25;
   display: flex;
 }
@@ -393,7 +393,7 @@ nav button {
   border: 0;
   background: none;
   padding: 8px 0;
-  font-size: 10px;
+  font-size: 11px;
   color: #545454;
   cursor: pointer;
   display: flex;
@@ -401,6 +401,7 @@ nav button {
   align-items: center;
   justify-content: center;
   line-height: 1.2;
+  font-weight: 700;
 }
 
 nav button.on {
@@ -410,8 +411,8 @@ nav button.on {
 
 nav .nav-icon {
   display: block;
-  width: 25px;
-  height: 25px;
+  width: 24px;
+  height: 24px;
   margin-bottom: 7px;
   background-color: currentColor;
   -webkit-mask-repeat: no-repeat;
@@ -436,8 +437,8 @@ nav .nav-icon {
 }
 
 .top .download-icon {
-  width: 20px;
-  height: 20px;
+  width: 25px;
+  height: 25px;
 }
 
 .hi {
@@ -795,7 +796,7 @@ nav .nav-icon {
 
 .cats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   row-gap: 10px;
   column-gap: 10px;
   overflow: visible;
@@ -1492,7 +1493,7 @@ nav .nav-icon {
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: #ff7a00;
+  color: rgb(41, 41, 41);
   cursor: pointer;
 }
 .note-del-btn:disabled { opacity: 0.4; cursor: default; }

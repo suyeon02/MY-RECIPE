@@ -56,7 +56,8 @@ export async function organizeRecipePhoto(dataUrl: string) {
   const base64 = resizedDataUrl.split(',')[1];
   if (!base64) throw new Error('사진 데이터를 읽지 못했어요.');
   const mimeType = 'image/jpeg';
-  const prompt = '사진 속 레시피를 읽고 재료, 양념, 조리 순서로 정리해 JSON만 반환해. 사진에서 확인할 수 없는 내용은 추측하지 말고 빈 문자열로 둬. 형식: {"name":"요리 이름","cat":"카테고리","min":0,"serv":2,"ing":"재료와 분량, 줄바꿈 구분","sau":"양념과 분량, 줄바꿈 구분","steps":"조리 순서, 줄바꿈 구분","tip":"팁"}. 카테고리는 밑반찬/국·찌개/메인 요리/면·분식/밥·죽/간식·디저트/기타 중 하나로 해.';
+  // 💡 카테고리 목록에 '양념' 및 최신 분류 반영
+  const prompt = '사진 속 레시피를 읽고 재료, 양념, 조리 순서로 정리해 JSON만 반환해. 사진에서 확인할 수 없는 내용은 추측하지 말고 빈 문자열로 둬. 형식: {"name":"요리 이름","cat":"카테고리","min":0,"serv":2,"ing":"재료와 분량, 줄바꿈 구분","sau":"양념과 분량, 줄바꿈 구분","steps":"조리 순서, 줄바꿈 구분","tip":"팁"}. 카테고리는 밥·죽/국·찌개·전골/볶음/조림/구이·찜/무침·샐러드/전·튀김/면·분식/김치·장아찌/양념/디저트·음료 중 하나로 해.';
   let result;
   try {
     result = await recipeImageModel.generateContent([prompt, {
@@ -105,13 +106,14 @@ export async function extractYoutubeRecipe(url: string) {
   if (!videoId) throw new Error('유튜브 링크만 지원해요.');
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
+  // 💡 유튜브 추출 프롬프트에도 최신 카테고리 및 '양념' 반영
   const prompt = `이 요리 영상을 보고 레시피를 정리해 JSON만 반환해. 영상에서 확인할 수 없는 내용은 추측하지 말고 빈 문자열로 둬.
 형식: {"name":"요리 이름","cat":"카테고리","min":25,"serv":2,"ing":"재료와 분량, 줄바꿈 구분","sau":"양념과 분량, 줄바꿈 구분","steps":"조리 순서, 줄바꿈 구분","tip":"팁","summary":"한 줄 소개","difficulty":"쉬움/보통/어려움 중 하나","calories":"1인분 예상 칼로리 (모르면 빈 문자열)","tags":["#태그"]}
 규칙:
 - steps는 각 줄 맨 앞에 그 단계가 영상에서 나오는 시간을 mm:ss 로 붙여. 예: 01:15 양념장을 만든다
 - 재료와 양념은 한 줄에 하나씩 "이름 분량" 형태로 써. 예: 돼지고기 600g
 - min은 조리 시간(분)을 숫자로, serv는 인분 수를 숫자로 써.
-- 카테고리는 밑반찬/국·찌개/메인 요리/면·분식/밥·죽/간식·디저트/기타 중 하나로 해.`;
+- 카테고리는 밥·죽/국·찌개·전골/볶음/조림/구이·찜/무침·샐러드/전·튀김/면·분식/김치·장아찌/양념/디저트·음료 중 하나로 해.`;
 
   const result = await generateWithRetry([
     { fileData: { mimeType: 'video/mp4', fileUri: watchUrl } },
