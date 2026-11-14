@@ -1464,7 +1464,7 @@ nav .nav-icon {
 .rcp .ingredient-head{display:flex;align-items:center;justify-content:space-between;margin-top:25px}
 .rcp .ingredient-head .ingredient-heading{margin:0}
 .rcp .base-servings{font-size:13px;font-weight:500;color:var(--sub)}
-.rcp .ingredient-list{display:grid;gap:6px;margin-bottom:13px;margin-top: 10px;}
+.rcp .ingredient-list{/*display:grid;gap:6px;*/margin-bottom:13px;margin-top: 10px;}
 .rcp .ingredient-list .ng{margin:0}
 
 .chip-scroll {

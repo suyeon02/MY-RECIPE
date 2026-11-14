@@ -1425,7 +1425,7 @@ export default function App() {
                 defaultValue={LI(editingRecipe.sau || '').join('\n')}
                 placeholder="예: 간장 2큰술, 고춧가루 1큰술"
               />
-              <label className="fl">조리 순서 (한 줄에 한 단계 · 앞에 02:10 처럼 시간 표기 가능)</label>
+              <label className="fl">조리 순서 <br/> (한 줄에 한 단계 · 앞에 02:10 처럼 시간 표기 가능)</label>
               <textarea name="steps" id="e6" defaultValue={editingRecipe.steps || ''} />
 
               <label className="fl">나만의 요리 팁</label>
