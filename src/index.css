@@ -322,8 +322,9 @@ textarea {
   border-radius: 22px;
   padding: 9px 15px;
   margin: 0 6px 8px 0;
+   font-weight: 500;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   background: var(--cd);
   border: 1px solid var(--bd);
   color: var(--tx);
@@ -810,13 +811,13 @@ nav .nav-icon {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--sub);
+  color:#292929;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 10px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 400;
   line-height: 1.35;
   overflow: visible;
@@ -842,7 +843,7 @@ nav .nav-icon {
   box-shadow: none;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
+  font-size: 30px;
   line-height: 1;
 }
 
@@ -1364,7 +1365,7 @@ nav .nav-icon {
 
 .mdl-h .download-icon { width: 32px; height: 32px; }
 .exp-subtitle { color: #80766a; font-size: 14px; line-height: 1.5; margin: 0 0 5px; }
-.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 10px 5px; }
+.exp-selectbar { display: flex; align-items: center; justify-content: space-between; margin: 12px 5px; }
 .exp-selectall { border: 0; border-radius: 999px; color: #272524; font-weight: 600; font-size: 14px; cursor: pointer; }
 .exp-selectall.on { background: #fff; color: #272524; }
 .exp-count { color: #ff7900; font-size: 14px; font-weight: 600; }
