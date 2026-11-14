@@ -1816,7 +1816,7 @@ export default function App() {
             <p className="hi">좋은 하루예요 👋</p>
             <div className="hd">
               오늘은 어떤 <em>요리</em>를<br />
-              해볼까요? 🍳
+              해볼까요?
             </div>
 
             {/* Search Input */}
